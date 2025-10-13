@@ -29,5 +29,5 @@
 			}
 		}
 	},
-	"postCreateCommand": "pip install -e . && mypy --strict . && ruff check ."
+	"postCreateCommand": "bash .devcontainer/setup_ollama.sh && pip install -e . && mypy --strict . && ruff check ."
 }

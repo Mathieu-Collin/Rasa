@@ -15,9 +15,8 @@ from rasa.engine.storage.resource import Resource
 from rasa.engine.storage.storage import ModelStorage
 from rasa.shared.nlu.training_data.message import Message
 
-# Import du client Ollama (utilisant le script fonctionnel)
-sys.path.insert(0, "/workspace/scripts")
-from test_ollama_client import OllamaClient
+# Import du client Ollama
+from .ollama_client import OllamaClient
 
 logger = logging.getLogger(__name__)
 
@@ -37,16 +36,19 @@ class LLMIntentRouter(GraphComponent):
 
         # Configuration Ollama
         self._ollama_enabled = config.get("ollama_enabled", True)
-        # Configuration Ollama - IP du bridge réseau Docker par défaut
-        self._ollama_base_url = config.get("ollama_base_url", "http://172.22.0.2:11434")
+        # Configuration Ollama - URL depuis la config ou variables d'environnement
+        self._ollama_base_url = config.get("ollama_base_url", "http://ollama:11434")
         self._ollama_model = config.get("ollama_model", "llama3.2:1b")
         self._ollama_timeout = config.get("ollama_timeout", 30)
 
-        # Configuration des seuils de decision hybride
-        self._nlu_priority_threshold = config.get("nlu_priority_threshold", 0.8)
-        self._llm_priority_threshold = config.get("llm_priority_threshold", 0.9)
+        # Configuration des seuils de decision hybride (LLM PRIORITAIRE)
+        # Seuil NLU plus élevé pour privilégier le LLM
+        self._nlu_priority_threshold = config.get("nlu_priority_threshold", 0.95)
+        self._llm_priority_threshold = config.get("llm_priority_threshold", 0.7)
         self._agreement_threshold = config.get("agreement_threshold", 0.1)
         self._fallback_to_nlu = config.get("fallback_to_nlu", True)
+        # Nouveau: Configurateur de tie-breaker (par défaut LLM prioritaire)
+        self._tie_breaker = config.get("tie_breaker", "llm")
 
         # Configuration du comportement
         self._parallel_processing = config.get("parallel_processing", False)
@@ -154,7 +156,7 @@ class LLMIntentRouter(GraphComponent):
 
                 if self._debug_logging:
                     logger.info("═" * 80)
-                    logger.info("📋 RÉSUMÉ DÉCISION FINALE")
+                    logger.info("📋 RÉSUMÉ DÉCISION FINALE (LLM PRIORITAIRE)")
                     logger.info(
                         f"   📝 Message: '{message.get('text', '')[:50]}{'...' if len(message.get('text', '')) > 50 else ''}'"
                     )
@@ -165,6 +167,9 @@ class LLMIntentRouter(GraphComponent):
                         f"   🏆 Décision Finale: {final_intent} (confiance: {final_confidence:.3f})"
                     )
                     logger.info(f"   🎯 Source: {decision_source}")
+                    logger.info(
+                        f"   ⚙️  Stratégie: LLM prioritaire (tie_breaker: {self._tie_breaker})"
+                    )
 
                     # Indicateur de changement
                     if (
@@ -172,8 +177,12 @@ class LLMIntentRouter(GraphComponent):
                         or abs(final_confidence - nlu_confidence) > 0.05
                     ):
                         logger.info(
-                            "   🔄 CHANGEMENT: Intent ou confiance modifiés par le routeur hybride"
+                            "   🔄 CHANGEMENT: Intent ou confiance modifiés par le routeur hybride LLM-prioritaire"
                         )
+                        if final_intent != nlu_intent:
+                            logger.info(
+                                f"   🎯 OVERRIDE LLM: {nlu_intent} → {final_intent}"
+                            )
                     else:
                         logger.info("   ✓ MAINTENU: Décision NLU conservée")
 
@@ -203,7 +212,7 @@ class LLMIntentRouter(GraphComponent):
 
         # 🎯 DEBUG: Affichage des données d'entrée
         if self._debug_logging:
-            logger.info("🎯 HYBRID CLASSIFICATION DEBUG")
+            logger.info("🎯 HYBRID CLASSIFICATION DEBUG (LLM PRIORITAIRE)")
             logger.info(f"   📝 Texte: '{text}'")
             logger.info(
                 f"   🧠 NLU Prédiction: {nlu_intent} (confiance: {nlu_confidence:.3f})"
@@ -211,18 +220,19 @@ class LLMIntentRouter(GraphComponent):
             logger.info(
                 f"   ⚙️  Seuils: NLU={self._nlu_priority_threshold}, LLM={self._llm_priority_threshold}, Accord={self._agreement_threshold}"
             )
+            logger.info(f"   🏆 Tie-Breaker: {self._tie_breaker}")
 
-        # Cas 1: NLU tres confiant, pas besoin du LLM
+        # Cas 1: NLU TRÈS confiant (seuil élevé 0.95+), pas besoin du LLM
         if nlu_confidence >= self._nlu_priority_threshold:
             self._stats["nlu_decisions"] += 1
             if self._debug_logging:
                 logger.info(
-                    f"   ✅ DÉCISION: NLU haute confiance ({nlu_confidence:.3f} >= {self._nlu_priority_threshold})"
+                    f"   ✅ DÉCISION: NLU TRÈS haute confiance ({nlu_confidence:.3f} >= {self._nlu_priority_threshold})"
                 )
                 logger.info(
-                    f"   🏆 RÉSULTAT: {nlu_intent} (source: nlu_high_confidence)"
+                    f"   🏆 RÉSULTAT: {nlu_intent} (source: nlu_very_high_confidence)"
                 )
-            return nlu_intent, nlu_confidence, "nlu_high_confidence"
+            return nlu_intent, nlu_confidence, "nlu_very_high_confidence"
 
         # Cas 2: Ollama desactive ou indisponible, utiliser NLU
         if not self._ollama_enabled or not self._ollama_client:
@@ -250,39 +260,32 @@ class LLMIntentRouter(GraphComponent):
                     f"   📊 Écart confiance: {abs(nlu_confidence - llm_confidence):.3f}"
                 )
 
-            # Cas 3a: LLM tres confiant et different de NLU
-            if (
-                llm_confidence >= self._llm_priority_threshold
-                and llm_intent != nlu_intent
-            ):
+            # Cas 3a: LLM confiant (seuil abaissé à 0.7) - PRIORITÉ LLM
+            if llm_confidence >= self._llm_priority_threshold:
                 self._stats["llm_decisions"] += 1
-                self._stats["disagreement_cases"] += 1
+                if llm_intent != nlu_intent:
+                    self._stats["disagreement_cases"] += 1
+                else:
+                    self._stats["agreement_cases"] += 1
                 if self._debug_logging:
-                    logger.info(
-                        f"   ✅ DÉCISION: LLM haute confiance + désaccord ({llm_confidence:.3f} >= {self._llm_priority_threshold})"
+                    agreement_status = (
+                        "accord" if llm_intent == nlu_intent else "désaccord"
                     )
                     logger.info(
-                        f"   🏆 RÉSULTAT: {llm_intent} (source: llm_high_confidence)"
+                        f"   ✅ DÉCISION: LLM confiant ({llm_confidence:.3f} >= {self._llm_priority_threshold}) - {agreement_status}"
                     )
-                return llm_intent, llm_confidence, "llm_high_confidence"
+                    logger.info(f"   🏆 RÉSULTAT: {llm_intent} (source: llm_confident)")
+                return llm_intent, llm_confidence, "llm_confident"
 
-            # Cas 3b: Accord entre NLU et LLM
-            if (
-                llm_intent == nlu_intent
-                or abs(nlu_confidence - llm_confidence) <= self._agreement_threshold
-            ):
+            # Cas 3b: Accord entre NLU et LLM (intentions identiques)
+            if llm_intent == nlu_intent:
                 self._stats["agreement_cases"] += 1
-                agreement_type = (
-                    "intentions identiques"
-                    if llm_intent == nlu_intent
-                    else "confidences proches"
-                )
 
-                # Utiliser la confiance la plus elevee
-                if llm_confidence > nlu_confidence:
+                # CHANGEMENT MAJEUR: En cas d'accord, privilégier le LLM par défaut
+                if self._tie_breaker == "llm" or llm_confidence >= nlu_confidence:
                     if self._debug_logging:
                         logger.info(
-                            f"   ✅ DÉCISION: Accord ({agreement_type}), LLM plus confiant"
+                            f"   ✅ DÉCISION: Accord intentions (tie-breaker: {self._tie_breaker}), LLM choisi"
                         )
                         logger.info(
                             f"   🏆 RÉSULTAT: {llm_intent} (source: llm_agreement)"
@@ -291,36 +294,82 @@ class LLMIntentRouter(GraphComponent):
                 else:
                     if self._debug_logging:
                         logger.info(
-                            f"   ✅ DÉCISION: Accord ({agreement_type}), NLU plus confiant"
+                            f"   ✅ DÉCISION: Accord intentions (tie-breaker: {self._tie_breaker}), NLU choisi"
                         )
                         logger.info(
                             f"   🏆 RÉSULTAT: {nlu_intent} (source: nlu_agreement)"
                         )
                     return nlu_intent, nlu_confidence, "nlu_agreement"
 
-            # Cas 3c: Desaccord, utiliser la confiance la plus elevee
+            # Cas 3c: Confidences proches (dans le seuil d'accord)
+            elif abs(nlu_confidence - llm_confidence) <= self._agreement_threshold:
+                self._stats["agreement_cases"] += 1
+
+                # CHANGEMENT MAJEUR: En cas de confidences proches, privilégier le LLM par défaut
+                if self._tie_breaker == "llm":
+                    if self._debug_logging:
+                        logger.info(
+                            f"   ✅ DÉCISION: Confidences proches (écart: {abs(nlu_confidence - llm_confidence):.3f}), LLM prioritaire"
+                        )
+                        logger.info(
+                            f"   🏆 RÉSULTAT: {llm_intent} (source: llm_close_confidence)"
+                        )
+                    return llm_intent, llm_confidence, "llm_close_confidence"
+                else:
+                    # Utiliser la confiance la plus élevée si tie_breaker != "llm"
+                    if llm_confidence > nlu_confidence:
+                        if self._debug_logging:
+                            logger.info(
+                                "   ✅ DÉCISION: Confidences proches, LLM plus confiant"
+                            )
+                            logger.info(
+                                f"   🏆 RÉSULTAT: {llm_intent} (source: llm_higher_confidence)"
+                            )
+                        return llm_intent, llm_confidence, "llm_higher_confidence"
+                    else:
+                        if self._debug_logging:
+                            logger.info(
+                                "   ✅ DÉCISION: Confidences proches, NLU plus confiant"
+                            )
+                            logger.info(
+                                f"   🏆 RÉSULTAT: {nlu_intent} (source: nlu_higher_confidence)"
+                            )
+                        return nlu_intent, nlu_confidence, "nlu_higher_confidence"
+
+            # Cas 3d: Désaccord net - utiliser la confiance la plus élevée (mais privilégier LLM si égalité)
             else:
                 self._stats["disagreement_cases"] += 1
                 if llm_confidence > nlu_confidence:
                     self._stats["llm_decisions"] += 1
                     if self._debug_logging:
                         logger.info(
-                            f"   ⚔️  DÉCISION: Désaccord, LLM plus confiant ({llm_confidence:.3f} > {nlu_confidence:.3f})"
+                            f"   ⚔️  DÉCISION: Désaccord net, LLM plus confiant ({llm_confidence:.3f} > {nlu_confidence:.3f})"
                         )
                         logger.info(
                             f"   🏆 RÉSULTAT: {llm_intent} (source: llm_disagreement)"
                         )
                     return llm_intent, llm_confidence, "llm_disagreement"
-                else:
+                elif nlu_confidence > llm_confidence:
                     self._stats["nlu_decisions"] += 1
                     if self._debug_logging:
                         logger.info(
-                            f"   ⚔️  DÉCISION: Désaccord, NLU plus confiant ({nlu_confidence:.3f} > {llm_confidence:.3f})"
+                            f"   ⚔️  DÉCISION: Désaccord net, NLU plus confiant ({nlu_confidence:.3f} > {llm_confidence:.3f})"
                         )
                         logger.info(
                             f"   🏆 RÉSULTAT: {nlu_intent} (source: nlu_disagreement)"
                         )
                     return nlu_intent, nlu_confidence, "nlu_disagreement"
+                else:
+                    # Égalité parfaite de confiance : privilégier LLM par défaut
+                    self._stats["llm_decisions"] += 1
+                    if self._debug_logging:
+                        logger.info(
+                            f"   ⚔️  DÉCISION: Égalité confiance ({llm_confidence:.3f} = {nlu_confidence:.3f}), LLM prioritaire"
+                        )
+                        logger.info(
+                            f"   🏆 RÉSULTAT: {llm_intent} (source: llm_tie_breaker)"
+                        )
+                    return llm_intent, llm_confidence, "llm_tie_breaker"
 
         except Exception as e:
             logger.error(f"Erreur prediction LLM: {e}")
@@ -362,11 +411,30 @@ class LLMIntentRouter(GraphComponent):
         # Charger les intentions disponibles depuis la config
         available_intents = self._get_available_intents()
 
-        # Appel au LLM
+        # Appel au LLM avec template par défaut
+        prompt_template = """You are an intent classifier for a conversational AI system.
+
+Analyze the following user message and classify it into one of the available intents.
+
+Available intents: [{available_intents}]
+
+User message: "{user_message}"
+
+Instructions:
+1. Choose the most appropriate intent from the available list
+2. If no intent matches well, choose the closest one
+3. Provide a confidence score between 0.0 and 1.0
+4. Be consistent with your classifications
+
+Respond in this exact format:
+Intent: <intent_name>
+Confidence: <score>
+"""
+        
         intent, confidence = self._ollama_client.classify_intent(
             text,
             available_intents,
-            temperature=0.1,  # Basse temperature pour plus de determinisme
+            prompt_template
         )
 
         # Mise en cache

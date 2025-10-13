@@ -1,0 +1,98 @@
+version: "3.1"
+recipe: default.v1
+language: en
+assistant_id: llm-intent-router-hybrid
+
+# Pipeline hybride avec LLM Intent Router intégré dans le système de couches
+pipeline:
+  # 1. Tokenization - Première étape obligatoire
+  - name: WhitespaceTokenizer
+
+  # 2. Featurization - Extraction des caractéristiques textuelles
+  - name: RegexFeaturizer
+  - name: LexicalSyntacticFeaturizer
+  - name: CountVectorsFeaturizer
+  - name: CountVectorsFeaturizer
+    analyzer: char_wb
+    min_ngram: 1
+    max_ngram: 4
+
+  # 3. Intent Classification traditionnel - Base NLU
+  - name: DIETClassifier
+    epochs: 100
+    constrain_similarities: true
+    model_confidence: softmax
+    entity_recognition: true
+
+  # 4. LLM Intent Router Hybride - NOUVELLE COUCHE INTÉGRÉE 🚀
+  - name: src.components.llm_intent_router.LLMIntentRouter
+    # Configuration Ollama
+    ollama_enabled: true
+    ollama_base_url: "http://ollama-gpu:11434"
+    ollama_model: "llama3.2:1b"
+    ollama_timeout: 30
+
+    # Seuils de décision hybride - LLM PRIORITAIRE
+    nlu_priority_threshold: 0.95  # Seuil très élevé pour NLU seul
+    llm_priority_threshold: 0.7   # Seuil abaissé pour plus d'influence LLM
+    agreement_threshold: 0.1
+    tie_breaker: "llm"            # LLM prioritaire en cas d'égalité
+    fallback_to_nlu: true
+
+    # Optimisations performance
+    parallel_processing: false
+    cache_llm_responses: true
+    debug_logging: true
+
+  # 5. Entity Extraction
+  - name: RegexEntityExtractor
+    case_sensitive: false
+    use_lookup_tables: true
+    use_regexes: true
+
+  # 6. Post-processing des entités
+  - name: EntitySynonymMapper
+    entities:
+      ["kpi", "sex", "stroke_type", "chart_type", "group_by", "boolean_type"]
+
+  # 7. Response Selection
+  - name: ResponseSelector
+    epochs: 100
+    constrain_similarities: true
+
+  # 8. Entity Consolidation
+  - name: src.components.entity_consolidator.EntityConsolidator
+    position_matching: "exact"
+    position_tolerance: 2
+    overlap_threshold: 0.7
+    consolidation_key: ["entity", "start", "end", "role", "value"]
+    role_aware: true
+    value_normalization: false
+    preserve_all_extractors: true
+    confidence_strategy: "all"
+    debug_logging: false
+    collect_stats: false
+
+  # 9. Fallback handling
+  - name: FallbackClassifier
+    threshold: 0.3
+    ambiguity_threshold: 0.1
+
+# Politiques de gestion des conversations
+policies:
+  - name: MemoizationPolicy
+  - name: RulePolicy
+  - name: UnexpecTEDIntentPolicy
+    max_history: 5
+    epochs: 100
+  - name: TEDPolicy
+    max_history: 5
+    epochs: 100
+    constrain_similarities: true
+
+# Importeurs avec support des couches
+importers:
+  - name: "src.components.layered_importer.OverlayImporter"
+    base_domain: ["src/core/domain"]
+    overlay_domain: []
+  - name: "RasaFileImporter"

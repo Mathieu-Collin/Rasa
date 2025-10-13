@@ -1,6 +1,6 @@
 services:
   rasa:
-    build: 
+    build:
       context: ..
       dockerfile: .devcontainer/Dockerfile
     volumes:
@@ -8,16 +8,44 @@ services:
     depends_on:
       - duckling
       - redis
+      - ollama
     ports:
       - "5005:5005"
     env_file:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - rasa-network
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
 
   redis:
     image: redis:alpine
     command: ["redis-server", "--save", "20", "1", "--loglevel", "warning"]
+    networks:
+      - rasa-network
 
   duckling:
     image: rasa/duckling:latest
+    networks:
+      - rasa-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: devcontainer-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - rasa-network
+    restart: unless-stopped
+
+networks:
+  rasa-network:
+    driver: bridge
+
+volumes:
+  ollama-data:
+    driver: local
