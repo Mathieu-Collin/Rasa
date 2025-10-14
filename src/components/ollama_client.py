@@ -3,25 +3,29 @@ Client Ollama pour LLM Intent Router
 Client autonome pour la communication avec l'API Ollama
 """
 
-import json
 import logging
+from typing import List, Optional, Tuple
+
 import requests
-from typing import Optional, Dict, Any, List, Tuple
 
 logger = logging.getLogger(__name__)
 
 
 class OllamaClient:
     """Client pour l'API Ollama"""
-    
-    def __init__(self, base_url: str = "http://ollama-gpu:11434", 
-                 model: str = "llama3.2:1b", timeout: int = 30):
-        self.base_url = base_url.rstrip('/')
+
+    def __init__(
+        self,
+        base_url: str = "http://ollama:11434",
+        model: str = "llama3.1:8b",  # Utilisation de llama3.1:8b par défaut
+        timeout: int = 30,
+    ):
+        self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout = timeout
-        
+
         logger.info(f"OllamaClient initialisé: {self.base_url}, modèle: {self.model}")
-        
+
     def health_check(self) -> bool:
         """Vérifie si Ollama est accessible"""
         try:
@@ -30,87 +34,97 @@ class OllamaClient:
         except Exception as e:
             logger.warning(f"Health check failed: {e}")
             return False
-    
-    def classify_intent(self, user_message: str, available_intents: List[str], 
-                       prompt_template: str) -> Tuple[Optional[str], Optional[float]]:
+
+    def classify_intent(
+        self, user_message: str, available_intents: List[str]
+    ) -> Tuple[Optional[str], Optional[float]]:
         """Classifie une intention avec Ollama"""
         try:
-            # Construire le prompt
-            prompt = prompt_template.format(
-                available_intents=', '.join(available_intents),
-                user_message=user_message
-            )
-            
-            # Préparer la requête
+            # Template optimisé pour llama3.1:8b - plus de contexte linguistique
+            prompt = f"""You are an expert intent classifier that understands multiple languages.
+
+Task: Classify the user message into ONE of the given categories.
+Message: "{user_message}"
+Available categories: {", ".join(available_intents)}
+
+Rules:
+- Respond with ONLY the category name
+- Understand French, English, and other languages
+- "Bonjour", "Salut", "Hello", "Hi" → greet
+- "Au revoir", "Goodbye", "Bye" → goodbye
+- No explanation needed
+
+Classification:"""
+
+            # Préparer la requête avec options optimisées
             data = {
                 "model": self.model,
                 "prompt": prompt,
                 "stream": False,
                 "options": {
                     "temperature": 0.1,
-                    "max_tokens": 50
-                }
+                    "max_tokens": 10,  # Limite encore plus stricte
+                    "stop": ["\n", ".", ",", ":", ";"],  # Arrêter aux ponctuations
+                },
             }
-            
+
             # Envoyer la requête
             response = requests.post(
-                f"{self.base_url}/api/generate",
-                json=data,
-                timeout=self.timeout
+                f"{self.base_url}/api/generate", json=data, timeout=self.timeout
             )
-            
+
             if response.status_code != 200:
                 logger.error(f"Ollama API error: {response.status_code}")
-                return None, None
-                
+                return None, 0.0
+
             result = response.json()
-            llm_response = result.get('response', '')
-            
-            # Parser la réponse avec validation
-            intent, confidence = self._parse_llm_response(llm_response, available_intents)
-            
+            llm_response = result.get("response", "").strip()
+
+            # Parser la réponse
+            intent, confidence = self._parse_simple_response(
+                llm_response, available_intents
+            )
+
             if intent and confidence is not None:
                 logger.debug(f"Classification réussie: {intent} ({confidence})")
                 return intent, confidence
             else:
-                logger.warning(f"Impossible de parser la réponse: {llm_response}")
-                return None, None
-                
+                logger.warning(f"Impossible de parser la réponse: '{llm_response}'")
+                return None, 0.0
+
         except Exception as e:
             logger.error(f"Erreur classification Ollama: {e}")
-            return None, None
-    
-    def _parse_llm_response(self, llm_response: str, available_intents: List[str] = None) -> Tuple[Optional[str], Optional[float]]:
-        """Parse la réponse du LLM pour extraire intention et confiance"""
+            return None, 0.0
+
+    def _parse_simple_response(
+        self, llm_response: str, available_intents: List[str]
+    ) -> Tuple[Optional[str], Optional[float]]:
+        """Parse la réponse par exemples du LLM pour extraire intention"""
         try:
-            lines = llm_response.strip().split('\n')
-            intent = None
-            confidence = None
-            
-            for line in lines:
-                line = line.strip()
-                if line.startswith('Intent:'):
-                    intent = line.split(':', 1)[1].strip()
-                elif line.startswith('Confidence:'):
-                    try:
-                        confidence_str = line.split(':', 1)[1].strip()
-                        confidence = float(confidence_str)
-                    except (ValueError, IndexError):
-                        pass
-            
-            # Validation de l'intent - nettoyage des caractères invalides
-            if intent:
-                # Nettoyer les caractères spéciaux comme * ou autres
-                intent = intent.replace('*', '').replace('"', '').replace("'", '').strip()
-                
-                # Vérifier si l'intent est dans la liste disponible
-                if available_intents and intent not in available_intents:
-                    logger.warning(f"Intent LLM '{intent}' non valide. Mapping vers 'fallback'")
-                    intent = 'fallback'
-                    confidence = 0.3  # Confiance réduite pour fallback
-            
-            return intent, confidence
-            
+            # Nettoyer la réponse
+            response = llm_response.strip().lower()
+
+            # Format attendu: "-> intent" ou juste "intent"
+            if response.startswith("->"):
+                response = response[2:].strip()
+
+            # Chercher l'intent exact dans la réponse
+            for intent in available_intents:
+                if intent.lower() == response or response.startswith(intent.lower()):
+                    return intent, 0.8
+
+            # Si aucun intent trouvé, essayer de parser les mots
+            words = response.split()
+            if words:
+                first_word = words[0].strip(',:."')
+                for intent in available_intents:
+                    if intent.lower() == first_word:
+                        return intent, 0.8
+
+            # Fallback si rien trouvé
+            logger.debug(f"Aucun intent trouvé dans: '{response}'")
+            return None, None
+
         except Exception as e:
-            logger.error(f"Erreur parsing réponse LLM: {e}")
+            logger.error(f"Erreur parsing réponse: {e}")
             return None, None

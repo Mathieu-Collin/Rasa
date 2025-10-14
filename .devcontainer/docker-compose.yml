@@ -33,19 +33,33 @@ services:
 
   ollama:
     image: ollama/ollama:latest
-    container_name: devcontainer-ollama
+    container_name: Ollama_devcontainer
     ports:
       - "11434:11434"
     volumes:
-      - ollama-data:/root/.ollama
+      - devcontainer_ollama-data:/root/.ollama
     networks:
       - rasa-network
     restart: unless-stopped
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - OLLAMA_GPU_LAYERS=999
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_HOST=0.0.0.0:11434
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
 networks:
   rasa-network:
+    name: devcontainer_rasa-network
     driver: bridge
 
 volumes:
-  ollama-data:
-    driver: local
+  devcontainer_ollama-data:
+    external: true

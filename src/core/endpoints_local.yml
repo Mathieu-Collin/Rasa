@@ -1,0 +1,14 @@
+action_endpoint:
+  url: "http://localhost:5055/webhook"
+
+# Utiliser des stores en mémoire au lieu de Redis pour éviter les erreurs de connexion
+lock_store:
+  type: "in_memory"
+
+tracker_store:
+  type: "in_memory"
+
+cors:
+  enabled: true
+  allowed_origins:
+    - "*"

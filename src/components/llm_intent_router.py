@@ -4,7 +4,6 @@ Combine les predictions NLU traditionnelles avec un LLM Ollama
 """
 
 import logging
-import sys
 from pathlib import Path
 from typing import Any, Dict, List, Text, Tuple
 
@@ -430,11 +429,9 @@ Respond in this exact format:
 Intent: <intent_name>
 Confidence: <score>
 """
-        
+
         intent, confidence = self._ollama_client.classify_intent(
-            text,
-            available_intents,
-            prompt_template
+            text, available_intents
         )
 
         # Mise en cache
