@@ -125,6 +125,275 @@
                 "showReuseMessage": true,
                 "clear": false
             }
+        },
+        {
+            "label": "LLM: Manage Models (Interactive)",
+            "type": "shell",
+            "command": "python scripts/manage_llm_models.py",
+            "group": "build",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}"
+                }
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "new",
+                "showReuseMessage": false,
+                "clear": true
+            }
+        },
+        {
+            "label": "LLM: Show Current Configuration",
+            "type": "shell",
+            "command": "python scripts/manage_llm_models.py config",
+            "group": "test",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}"
+                }
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "LLM: List Available Models",
+            "type": "shell",
+            "command": "python scripts/manage_llm_models.py list",
+            "group": "test",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}"
+                }
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "LLM: Change Model",
+            "type": "shell",
+            "command": "python scripts/manage_llm_models.py change ${input:llmModel}",
+            "group": "build",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}"
+                }
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "LLM: Test Current Model",
+            "type": "shell",
+            "command": "python scripts/manage_llm_models.py test",
+            "group": "test",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}"
+                }
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "LLM: Set Environment Variable",
+            "type": "shell",
+            "command": "export OLLAMA_MODEL=\"${input:llmModel}\" && echo \"✅ OLLAMA_MODEL variable set: ${input:llmModel}\" && echo \"💡 This variable is active for this VS Code session\"",
+            "group": "build",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}"
+                }
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "LLM: Demo Model Change",
+            "type": "shell",
+            "command": "python scripts/demo_model_change.py",
+            "group": "test",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}"
+                }
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "LLM: Full System Test",
+            "type": "shell",
+            "command": "python scripts/test_final_llm_config.py",
+            "group": "test",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}"
+                }
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "LLM: Quick Switch to llama3.1:8b",
+            "type": "shell",
+            "command": "python scripts/manage_llm_models.py change llama3.1:8b && echo \"🚀 Model changed to llama3.1:8b\"",
+            "group": "build",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}",
+                    "OLLAMA_MODEL": "llama3.1:8b"
+                }
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "LLM: Quick Switch to llama3.2:3b",
+            "type": "shell",
+            "command": "python scripts/manage_llm_models.py change llama3.2:3b && echo \"🚀 Model changed to llama3.2:3b\"",
+            "group": "build",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}",
+                    "OLLAMA_MODEL": "llama3.2:3b"
+                }
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "LLM: Quick Switch to tinyllama",
+            "type": "shell",
+            "command": "python scripts/manage_llm_models.py change tinyllama && echo \"🚀 Model changed to tinyllama\"",
+            "group": "build",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}",
+                    "OLLAMA_MODEL": "tinyllama"
+                }
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "LLM: Change Model and Train",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "LLM: Change Model",
+                "Rasa: Train Hybrid Model (LLM + NLU)"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "LLM: Complete Workflow - Change Model + Test + Train",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "LLM: Change Model",
+                "LLM: Test Current Model",
+                "Rasa: Train Hybrid Model (LLM + NLU)"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            }
         }
     ],
     "inputs": [
@@ -157,6 +426,29 @@
                 "de/DE"
             ],
             "default": "en/US"
+        },
+        {
+            "id": "llmModel",
+            "type": "pickString",
+            "description": "Choose LLM model",
+            "options": [
+                "llama3.1:8b",
+                "llama3.2:3b",
+                "llama3.2:1b",
+                "tinyllama",
+                "llama2:7b",
+                "codellama:7b",
+                "mistral:7b",
+                "phi3:mini",
+                "qwen2:7b"
+            ],
+            "default": "llama3.1:8b"
+        },
+        {
+            "id": "customLlmModel",
+            "type": "promptString",
+            "description": "Enter custom LLM model name (e.g., llama3.2:1b, custom-model:latest)",
+            "default": "llama3.1:8b"
         }
     ]
 }

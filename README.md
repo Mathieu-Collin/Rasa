@@ -261,6 +261,116 @@ The system currently supports:
 
 **Total: 6 intents available**
 
+## 🔧 LLM Model Configuration
+
+### Changing the LLM Model
+
+The system allows easy switching between different LLM models. Here are the exact locations where you can change the model configuration:
+
+#### Primary Configuration Location
+
+**File**: `src/config/ollama_config.yml`  
+**Line 86**:
+```yaml
+ollama:
+  # ... other configuration
+  model: llama3.1:8b  # ← Change this line to use a different model
+```
+
+#### Secondary Configuration Location
+
+**File**: `src/config/hybrid_pipeline_config.yml`  
+**Line 34**:
+```yaml
+- name: src.components.llm_intent_router.LLMIntentRouter
+  ollama_enabled: true
+  ollama_base_url: "http://ollama:11434"
+  ollama_model: "llama3.1:8b"  # ← Also change this line
+```
+
+#### Environment Variable Override (Highest Priority)
+
+For temporary model changes or testing:
+```bash
+export OLLAMA_MODEL="llama3.2:3b"
+```
+
+### Model Change Examples
+
+#### Example 1: Switch to llama3.2:3b (Faster/Lighter)
+
+1. **In `ollama_config.yml` line 86**:
+```yaml
+model: llama3.2:3b
+```
+
+2. **In `hybrid_pipeline_config.yml` line 34**:
+```yaml
+ollama_model: "llama3.2:3b"
+```
+
+#### Example 2: Switch to tinyllama (Development/Testing)
+
+1. **In `ollama_config.yml` line 86**:
+```yaml
+model: tinyllama
+```
+
+2. **In `hybrid_pipeline_config.yml` line 34**:
+```yaml
+ollama_model: "tinyllama"
+```
+
+#### Example 3: Using Environment Variables (No File Changes)
+
+```bash
+# Temporary override for testing
+export OLLAMA_MODEL="phi3:mini"
+
+# Start training with new model
+OVERLAY_BASE_CONFIG="src/config/hybrid_pipeline_config.yml" \
+bash scripts/layer_rasa_lang.sh en/US
+```
+
+### Supported Models
+
+The following models have been tested with the system:
+
+| Model | Size | Best Use Case | Performance |
+|-------|------|---------------|-------------|
+| `llama3.1:8b` | 8GB | Production, multilingual | High accuracy, slower |
+| `llama3.2:3b` | 3GB | Development, balanced | Good accuracy, faster |
+| `llama3.2:1b` | 1GB | Testing, rapid iteration | Basic accuracy, very fast |
+| `tinyllama` | <1GB | Development, debugging | Limited accuracy, fastest |
+| `llama2:7b` | 7GB | Stable production | Reliable, moderate speed |
+| `phi3:mini` | ~4GB | Efficient production | Good balance |
+
+### Model Configuration Validation
+
+After changing the model, validate your configuration:
+
+```bash
+# Check if model is available in Ollama
+curl http://ollama:11434/api/tags | grep "your-new-model"
+
+# Test the configuration
+curl -X POST http://localhost:5005/model/parse \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Hello"}'
+
+# Check logs for model loading
+tail -f hybrid_server.log | grep "model"
+```
+
+### Configuration Priority Order
+
+The system follows this priority order for model selection:
+
+1. **Environment Variable** (`OLLAMA_MODEL`) - Highest priority
+2. **Pipeline Configuration** (`hybrid_pipeline_config.yml`)
+3. **Ollama Configuration** (`ollama_config.yml`)
+4. **Default Fallback** (`llama3.1:8b`)
+
 ## ⚙️ Configuration
 
 ### Hybrid Pipeline Configuration
