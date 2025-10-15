@@ -2,4 +2,8 @@ version: "3.1"
 
 responses:
   utter_default:
-    - text: "Sorry, I didn’t understand that. Could you rephrase?"
+    - text: "Sorry, I did not understand that. Could you rephrase?"
+    - text: "I am not sure how to help with that. Can you try asking differently?"
+  
+  utter_ask_rephrase:
+    - text: "I am having trouble understanding. Could you try rephrasing that?"

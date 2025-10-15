@@ -3,3 +3,6 @@ version: "3.1"
 responses:
   utter_default:
     - text: "[placeholder] localized in fallback/en-us or locale overlays"
+
+  utter_ask_rephrase:
+    - text: "[placeholder] localized in fallback/en-us or locale overlays"

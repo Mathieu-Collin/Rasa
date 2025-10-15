@@ -40,12 +40,20 @@ class LLMIntentRouter(GraphComponent):
 
         # Seuils de décision
         self.nlu_priority_threshold = config.get("nlu_priority_threshold", 0.95)
-        self.llm_priority_threshold = config.get("llm_priority_threshold", 0.7)
+        self.llm_priority_threshold = config.get(
+            "llm_priority_threshold", 0.6
+        )  # Abaissé pour plus de fallback
         self.agreement_threshold = config.get("agreement_threshold", 0.1)
         self.tie_breaker = config.get("tie_breaker", "llm")
 
-        # Options
+        # Options + NOUVEAUX PARAMÈTRES FALLBACK 🚨
         self.fallback_to_nlu = config.get("fallback_to_nlu", True)
+        self.fallback_threshold = config.get("fallback_threshold", 0.4)
+        self.unknown_intent_threshold = config.get("unknown_intent_threshold", 0.3)
+        self.force_fallback_keywords = config.get(
+            "force_fallback_keywords",
+            ["song", "music", "recipe", "weather", "news", "joke", "story", "poem"],
+        )
         self.cache_llm_responses = config.get("cache_llm_responses", True)
         self.debug_logging = config.get("debug_logging", False)
 
@@ -91,6 +99,20 @@ class LLMIntentRouter(GraphComponent):
     def _process_single_message(self, message: Message) -> None:
         """Traite un message unique avec la logique hybride"""
         try:
+            # Récupérer le texte du message
+            text = message.get("text", "")
+
+            # 🚨 DÉTECTION PRÉCOCE DE FALLBACK par mots-clés
+            if self._should_force_fallback(text):
+                if self.debug_logging:
+                    logger.info(f"    🚨 FALLBACK FORCÉ par mots-clés: '{text}'")
+                message.set(
+                    "intent",
+                    {"name": "fallback", "confidence": 0.8},
+                    add_to_output=True,
+                )
+                return
+
             # Récupérer la prédiction NLU existante (peut être vide en première position)
             nlu_intent = message.get("intent", {})
             nlu_intent_name = nlu_intent.get("name") if nlu_intent else None
@@ -101,7 +123,7 @@ class LLMIntentRouter(GraphComponent):
 
             # Appliquer la logique de décision hybride
             final_intent, final_confidence, decision_source = self._hybrid_decision(
-                message.get("text", ""),
+                text,
                 nlu_intent_name,
                 nlu_confidence,
                 available_intents,
@@ -271,7 +293,30 @@ class LLMIntentRouter(GraphComponent):
         llm_intent: str,
         llm_confidence: float,
     ) -> Tuple[str, float, str]:
-        """Décide entre NLU et LLM selon la logique hybride"""
+        """Décide entre NLU et LLM selon la logique hybride avec fallback intelligent"""
+
+        # 🚨 FALLBACK INTELLIGENT AMÉLIORÉ: Si les deux modèles sont peu confiants
+        if (
+            nlu_confidence < self.fallback_threshold
+            and llm_confidence < self.fallback_threshold
+        ):
+            if self.debug_logging:
+                logger.info(
+                    f"    🚨 FALLBACK INTELLIGENT: NLU={nlu_confidence:.3f} et LLM={llm_confidence:.3f} < {self.fallback_threshold}"
+                )
+            return (
+                "fallback",
+                0.9,
+                "intelligent_fallback",
+            )  # Confiance élevée pour le fallback
+
+        # 🚨 NOUVEAU: Détection LLM d'intention inconnue
+        if llm_intent == "fallback" and llm_confidence >= self.unknown_intent_threshold:
+            if self.debug_logging:
+                logger.info(
+                    f"    🚨 LLM DÉTECTE DEMANDE HORS SCOPE: LLM confidence={llm_confidence:.3f}"
+                )
+            return "fallback", 0.85, "llm_detected_unknown"
 
         # CAS 3: LLM confiant
         if llm_confidence >= self.llm_priority_threshold:
@@ -321,3 +366,36 @@ class LLMIntentRouter(GraphComponent):
             "fallback",
         ]
         return default_intents
+
+    def _should_force_fallback(self, text: str) -> bool:
+        """
+        Détermine si le texte contient des mots-clés qui forcent un fallback
+        🚨 Nouveau: Détection des demandes hors scope du chatbot médical
+        """
+        if not text:
+            return False
+
+        text_lower = text.lower()
+
+        # Vérifier les mots-clés de fallback configurés
+        for keyword in self.force_fallback_keywords:
+            if keyword.lower() in text_lower:
+                return True
+
+        # Détection de patterns hors scope médical
+        out_of_scope_patterns = [
+            "forget everything",
+            "ignore instructions",
+            "tell me a",
+            "sing me",
+            "play music",
+            "what's the weather",
+            "give me a recipe",
+            "tell me a joke",
+        ]
+
+        for pattern in out_of_scope_patterns:
+            if pattern.lower() in text_lower:
+                return True
+
+        return False
