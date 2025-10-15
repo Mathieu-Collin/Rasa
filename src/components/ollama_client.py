@@ -76,7 +76,7 @@ class OllamaClient:
         self.fallback_models = ["llama3.1:8b", "tinyllama"]
         self.model_config = {
             "temperature": 0.1,
-            "max_tokens": 10,
+            "num_predict": 10,  # Ollama utilise num_predict au lieu de max_tokens
             "stop_sequences": ["\n", ".", ",", ":", ";"],
         }
 
@@ -100,7 +100,9 @@ class OllamaClient:
             # Préparer les options du modèle depuis la configuration
             model_options = {
                 "temperature": self.model_config.get("temperature", 0.1),
-                "max_tokens": self.model_config.get("max_tokens", 10),
+                "num_predict": self.model_config.get(
+                    "num_predict", 10
+                ),  # Ollama utilise num_predict
                 "stop": self.model_config.get(
                     "stop_sequences", ["\n", ".", ",", ":", ";"]
                 ),

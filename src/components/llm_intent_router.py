@@ -5,7 +5,7 @@ Version simplifiée sans configuration centralisée
 """
 
 import logging
-from typing import Any, Dict, List, Text, Tuple
+from typing import Any, Dict, List, Optional, Text, Tuple
 
 from rasa.engine.graph import ExecutionContext, GraphComponent
 from rasa.engine.recipes.default_recipe import DefaultV1Recipe
@@ -91,10 +91,10 @@ class LLMIntentRouter(GraphComponent):
     def _process_single_message(self, message: Message) -> None:
         """Traite un message unique avec la logique hybride"""
         try:
-            # Récupérer la prédiction NLU existante
+            # Récupérer la prédiction NLU existante (peut être vide en première position)
             nlu_intent = message.get("intent", {})
-            nlu_intent_name = nlu_intent.get("name", "nlu_fallback")
-            nlu_confidence = nlu_intent.get("confidence", 0.0)
+            nlu_intent_name = nlu_intent.get("name") if nlu_intent else None
+            nlu_confidence = nlu_intent.get("confidence", 0.0) if nlu_intent else 0.0
 
             # Récupérer les intentions disponibles
             available_intents = self._get_available_intents()
@@ -108,7 +108,9 @@ class LLMIntentRouter(GraphComponent):
             )
 
             # Mettre à jour le message si nécessaire
-            if final_intent != nlu_intent_name or final_confidence != nlu_confidence:
+            if final_intent is not None and (
+                final_intent != nlu_intent_name or final_confidence != nlu_confidence
+            ):
                 message.set(
                     "intent",
                     {"name": final_intent, "confidence": final_confidence},
@@ -117,50 +119,113 @@ class LLMIntentRouter(GraphComponent):
 
                 # Log debug si activé
                 if self.debug_logging:
-                    logger.info(
-                        f"🎯 OVERRIDE LLM: {nlu_intent_name} → {final_intent} "
-                        f"(source: {decision_source})"
-                    )
+                    if nlu_intent_name is not None:
+                        logger.info(
+                            f"🎯 OVERRIDE LLM: {nlu_intent_name} → {final_intent} "
+                            f"(source: {decision_source})"
+                        )
+                    else:
+                        logger.info(
+                            f"🎯 GÉNÉRATION LLM: {final_intent} "
+                            f"(source: {decision_source})"
+                        )
+            elif final_intent is None and self.debug_logging:
+                logger.info("⏭️ Pas d'intervention LLM: laisser pipeline continuer")
 
         except Exception as e:
             logger.error(f"Erreur traitement message: {e}")
-            # En cas d'erreur, on garde le résultat NLU original
+            # En cas d'erreur, on garde le résultat NLU original ou on laisse passer
 
     def _hybrid_decision(
         self,
         text: str,
-        nlu_intent: str,
+        nlu_intent: Optional[str],
         nlu_confidence: float,
         available_intents: List[str],
-    ) -> Tuple[str, float, str]:
+    ) -> Tuple[Optional[str], float, str]:
         """
         Logique de décision hybride entre NLU et LLM
         Retourne: (intent_final, confidence_finale, source_decision)
+
+        Gère deux cas :
+        1. Position APRÈS DIETClassifier : nlu_intent existe → logique hybride
+        2. Position AVANT DIETClassifier : nlu_intent=None → LLM génère intention initiale
         """
 
-        # CAS 1: NLU très haute confiance - Pas besoin de LLM
+        # CAS SPÉCIAL: Première position dans le pipeline - Pas d'intention NLU
+        if nlu_intent is None:
+            if self.debug_logging:
+                logger.info("    🚀 Position initiale: génération intention par LLM")
+
+            if not self.ollama_enabled or not self.ollama_client:
+                # Pas de LLM disponible en première position → laisser passer au DIETClassifier
+                if self.debug_logging:
+                    logger.info(
+                        "    ⏭️ Ollama indisponible, laisser DIETClassifier décider"
+                    )
+                return None, 0.0, "skip_to_diet_classifier"
+
+            # Obtenir prédiction LLM pour intention initiale
+            try:
+                llm_intent, llm_confidence = self._get_llm_prediction(
+                    text, available_intents
+                )
+
+                if (
+                    llm_intent
+                    and llm_confidence
+                    and llm_confidence >= self.llm_priority_threshold
+                ):
+                    if self.debug_logging:
+                        logger.info(
+                            f"    🎯 LLM génère intention initiale: {llm_intent} ({llm_confidence:.3f})"
+                        )
+                    return llm_intent, llm_confidence, "llm_initial_generation"
+                else:
+                    # LLM pas assez confiant → laisser DIETClassifier décider
+                    confidence_str = (
+                        f"{llm_confidence:.3f}" if llm_confidence else "None"
+                    )
+                    if self.debug_logging:
+                        logger.info(
+                            f"    ⏭️ LLM pas confiant ({confidence_str}), laisser DIETClassifier"
+                        )
+                    return None, 0.0, "skip_to_diet_classifier"
+
+            except Exception as e:
+                logger.error(f"Erreur LLM en position initiale: {e}")
+                return None, 0.0, "skip_to_diet_classifier"
+
+        # CAS NORMAL: Position APRÈS DIETClassifier - Analyse de l'intention NLU
         if nlu_confidence >= self.nlu_priority_threshold:
             if self.debug_logging:
                 logger.info(
-                    f"    📝 NLU très confiant ({nlu_confidence:.3f} >= {self.nlu_priority_threshold})"
+                    f"    ✅ NLU très confiant ({nlu_confidence:.3f} >= {self.nlu_priority_threshold}) - Pas de consultation LLM"
                 )
             return nlu_intent, nlu_confidence, "nlu_very_high_confidence"
 
-        # CAS 2: NLU pas assez confiant - Consulter LLM
+        # CAS HYBRIDE: NLU pas assez confiant - Consultation LLM pour amélioration
         if not self.ollama_enabled or not self.ollama_client:
             if self.debug_logging:
-                logger.info("    ❌ Ollama désactivé, fallback NLU")
+                logger.info("    ❌ Ollama désactivé, fallback vers prédiction NLU")
+            return nlu_intent, nlu_confidence, "nlu_fallback"
             return nlu_intent, nlu_confidence, "ollama_disabled"
 
         # Obtenir prédiction LLM
         try:
-            llm_intent, llm_confidence = self._get_llm_prediction(text, available_intents)
+            llm_intent, llm_confidence = self._get_llm_prediction(
+                text, available_intents
+            )
 
             if self.debug_logging:
-                logger.info(f"🎯 HYBRID CLASSIFICATION DEBUG")
+                logger.info("🎯 HYBRID CLASSIFICATION DEBUG")
                 logger.info(f"    📝 Texte: '{text}'")
-                logger.info(f"    � NLU Prédiction: {nlu_intent} ({nlu_confidence:.3f})")
-                logger.info(f"    🤖 LLM Prédiction: {llm_intent} ({llm_confidence:.3f})")
+                logger.info(
+                    f"    � NLU Prédiction: {nlu_intent} ({nlu_confidence:.3f})"
+                )
+                logger.info(
+                    f"    🤖 LLM Prédiction: {llm_intent} ({llm_confidence:.3f})"
+                )
 
             if llm_intent is None or llm_confidence is None:
                 # LLM failed
@@ -177,7 +242,7 @@ class LLMIntentRouter(GraphComponent):
 
     def _get_llm_prediction(
         self, text: str, available_intents: List[str]
-    ) -> Tuple[str, float]:
+    ) -> Tuple[Optional[str], Optional[float]]:
         """Obtient une prédiction du LLM Ollama"""
         try:
             # Vérifier le cache d'abord
@@ -185,7 +250,9 @@ class LLMIntentRouter(GraphComponent):
                 return self._llm_cache[text]
 
             # Appeler Ollama
-            intent, confidence = self.ollama_client.classify_intent(text, available_intents)
+            intent, confidence = self.ollama_client.classify_intent(
+                text, available_intents
+            )
 
             # Mettre en cache le résultat
             if self._llm_cache and intent is not None:
@@ -198,7 +265,11 @@ class LLMIntentRouter(GraphComponent):
             return None, None
 
     def _decide_between_nlu_and_llm(
-        self, nlu_intent: str, nlu_confidence: float, llm_intent: str, llm_confidence: float
+        self,
+        nlu_intent: str,
+        nlu_confidence: float,
+        llm_intent: str,
+        llm_confidence: float,
     ) -> Tuple[str, float, str]:
         """Décide entre NLU et LLM selon la logique hybride"""
 
@@ -213,7 +284,9 @@ class LLMIntentRouter(GraphComponent):
                 # CAS 3b: Désaccord - LLM gagne si stratégie LLM prioritaire
                 if self.tie_breaker == "llm":
                     decision = "llm_confident"
-                    return llm_intent, llm_confidence, decision
+                    # Boost confiance pour éviter FallbackClassifier override
+                    boosted_confidence = max(llm_confidence, 0.85)
+                    return llm_intent, boosted_confidence, decision
                 else:
                     decision = "nlu_confident"
                     return nlu_intent, nlu_confidence, decision
