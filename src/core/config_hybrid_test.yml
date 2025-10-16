@@ -3,8 +3,8 @@ recipe: default.v1
 language: en
 assistant_id: llm-intent-router-hybrid-test
 
-# Pipeline hybride avec LLM Intent Router pour test d'intégration
-# Configuration allégée pour validation rapide
+# hybrid pipeline with LLM Intent Router for integration testing
+# Lightweight configuration for quick validation
 pipeline:
   # 1. Tokenization
   - name: WhitespaceTokenizer
@@ -18,28 +18,28 @@ pipeline:
     min_ngram: 1
     max_ngram: 4
 
-  # 3. Intent Classification traditionnel (epochs réduits pour rapidité)
+  # 3. Intent Classification traditionnel
   - name: DIETClassifier
-    epochs: 10 # Réduit pour test rapide
+    epochs: 10
     constrain_similarities: true
     model_confidence: softmax
     entity_recognition: true
 
-  # 4. LLM Intent Router Hybride - COMPOSANT TESTÉ
+  # 4. LLM Intent Router Hybride
   - name: src.components.llm_intent_router.LLMIntentRouter
-    # Configuration Ollama - IP du bridge réseau Docker
+    # Ollama Configuration - IP of the docker bridge network
     ollama_enabled: true
     ollama_base_url: "http://172.22.0.2:11434"
     ollama_model: "llama3.2:1b"
     ollama_timeout: 30
 
-    # Seuils de décision hybride
+    # Hybrid decision thresholds
     nlu_priority_threshold: 0.8
     llm_priority_threshold: 0.9
     agreement_threshold: 0.1
     fallback_to_nlu: true
 
-    # Debug activé pour validation
+    # Debug enabled for validation
     debug_logging: true
 
   # 5. Entity Extraction
@@ -54,7 +54,7 @@ pipeline:
       ["kpi", "sex", "stroke_type", "chart_type", "group_by", "boolean_type"]
 
   - name: ResponseSelector
-    epochs: 10 # Réduit pour test rapide
+    epochs: 10 # Small epoch for quick responses
 
   - name: src.components.entity_consolidator.EntityConsolidator
     position_matching: "exact"
@@ -73,7 +73,7 @@ pipeline:
     threshold: 0.3
     ambiguity_threshold: 0.1
 
-# Politiques allégées pour test rapide
+# Lightweight policies for quick testing
 policies:
   - name: MemoizationPolicy
   - name: RulePolicy
@@ -85,7 +85,7 @@ policies:
     epochs: 10 # Réduit
     constrain_similarities: true
 
-# Importeurs inchangés
+# Importers configuration for hybrid testing
 importers:
   - name: "src.components.layered_importer.OverlayImporter"
     base_domain: ["src/core/domain"]

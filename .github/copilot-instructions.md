@@ -1,3 +1,6 @@
+This file is a detailed instruction manual for developers working on a multi-locale Rasa chatbot project with a layered architecture for internationalization and custom entity processing. It includes an action plan for implementing a hybrid LLM Intent Router using Ollama, along with technical documentation, configuration details, and development conventions.
+It is writen in french in some parts and will be deleted at the end of the project when a crear documentation will be created.
+
 # AI Coding Agent Instructions
 
 This is a multi-locale Rasa chatbot with a sophisticated layered architecture for internationalization and custom entity processing.
@@ -14,7 +17,9 @@ hybrid_decision:
   llm_priority_threshold: 0.9                  # Testé et optimisé
   agreement_threshold: 0.1                     # Calibré sur données réelles
   fallback_to_nlu: true                       # 100% fonctionnel
-```ence à le suivre étapes par étaptes. Commence du début et arrète toi uniquement quand la partie est terminée. Une fois qu'elle est terminée, je veux que tu mette en place une série de test pour valider la nouvelle fonctionnalité/feature. Une fois cette dernière validée par moi, tu pourras la marquer comme réalisée dans le plan d'action (copilot-instrauction)
+```
+
+Commence à le suivre étapes par étapes. Commence du début et arrête toi uniquement quand la partie est terminée. Une fois qu'elle est terminée, je veux que tu mette en place une série de test pour valider la nouvelle fonctionnalité/feature. Une fois cette dernière validée par moi, tu pourras la marquer comme réalisée dans le plan d'action (copilot-instrauction)
 
 ## Architecture Overview
 
