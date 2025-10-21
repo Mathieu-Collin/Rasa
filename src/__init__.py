@@ -1,5 +1,10 @@
 import logging
 
+# CRITICAL: Load .env BEFORE importing any modules that use it
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
+
 from src import env
 
 LOG_LEVEL = env.require_any_env("LOGLEVEL") or "INFO"
@@ -32,7 +37,9 @@ class ColorFormatter(logging.Formatter):
         return super().format(record)
 
 
-formatter = ColorFormatter("%(asctime)s %(levelname)-16s %(name)-32s [%(link)s] \n%(message)s\n")
+formatter = ColorFormatter(
+    "%(asctime)s %(levelname)-16s %(name)-32s [%(link)s] \n%(message)s\n"
+)
 handler.setFormatter(formatter)
 root_logger.addHandler(handler)
 root_logger.setLevel(LOG_LEVEL)
@@ -40,4 +47,6 @@ root_logger.setLevel(LOG_LEVEL)
 logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
 
-logger.info(f"Package logger initialized with level: {logging.getLevelName(logger.level)}")
+logger.info(
+    f"Package logger initialized with level: {logging.getLevelName(logger.level)}"
+)

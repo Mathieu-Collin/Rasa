@@ -8,11 +8,65 @@
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "problemMatcher": [],
             "group": {
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "🐛 Start Rasa Actions (Debug)",
+            "type": "shell",
+            "command": "python -m rasa_sdk --actions src.actions --debug",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONUNBUFFERED": "1",
+                    "RASA_SDK_DEBUG": "true"
+                }
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "🤖 Switch to Ollama",
+            "type": "shell",
+            "command": "./switch_llm.sh ollama",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build"
+        },
+        {
+            "label": "🌐 Switch to OpenAI",
+            "type": "shell",
+            "command": "./switch_llm.sh openai",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build"
+        },
+        {
+            "label": "🧪 Test Ollama",
+            "type": "shell",
+            "command": "python test_ollama_network.py",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "test"
+        },
+        {
+            "label": "🧪 Test Action Manually",
+            "type": "shell",
+            "command": "python -c \"import asyncio; from src.actions import ActionGenerateVisualization; from unittest.mock import Mock; action = ActionGenerateVisualization(); dispatcher = Mock(); tracker = Mock(); tracker.latest_message = {'text': 'Show males aged 40 to 60 with NIHSS > 4', 'entities': []}; tracker.sender_id = 'test'; asyncio.run(action.run(dispatcher, tracker, {}))\"",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "test"
         }
     ]
 }
