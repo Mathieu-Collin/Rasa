@@ -4,6 +4,8 @@ import logging
 # Critical: Temporary import for test data generation before real data integration
 # ==================================================
 import random
+
+# ==================================================
 import time
 from typing import Any, Dict, List
 
@@ -12,8 +14,6 @@ from rasa_sdk.executor import CollectingDispatcher  # type: ignore
 from rasa_sdk.types import DomainDict  # type: ignore
 
 from src.langchain.planner_chain import generate_analysis_plan_simple
-
-# ==================================================
 
 # Configure detailed logging
 logger = logging.getLogger(__name__)
