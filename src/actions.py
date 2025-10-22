@@ -1,5 +1,9 @@
 import json
 import logging
+
+# Critical: Temporary import for test data generation before real data integration
+# ==================================================
+import random
 import time
 from typing import Any, Dict, List
 
@@ -8,6 +12,8 @@ from rasa_sdk.executor import CollectingDispatcher  # type: ignore
 from rasa_sdk.types import DomainDict  # type: ignore
 
 from src.langchain.planner_chain import generate_analysis_plan_simple
+
+# ==================================================
 
 # Configure detailed logging
 logger = logging.getLogger(__name__)
@@ -41,17 +47,17 @@ class ActionGenerateVisualization(Action):
         start_time = time.time()
         request_id = f"req_{int(start_time * 1000)}"
 
-        logger.info(f"🚀 [{request_id}] ACTION STARTED: {self.name()}")
-        logger.info(f"📧 [{request_id}] Dispatcher type: {type(dispatcher)}")
-        logger.info(f"👤 [{request_id}] Tracker type: {type(tracker)}")
+        logger.info(f"[{request_id}] ACTION STARTED: {self.name()}")
+        logger.info(f"[{request_id}] Dispatcher type: {type(dispatcher)}")
+        logger.info(f"[{request_id}] Tracker type: {type(tracker)}")
 
         try:
             user_message = tracker.latest_message.get("text", "")
             user_id = tracker.sender_id
 
-            logger.info(f"📝 [{request_id}] User message: '{user_message}'")
-            logger.info(f"👤 [{request_id}] User ID: {user_id}")
-            logger.info(f"🌍 [{request_id}] LLM Provider: Ollama")
+            logger.info(f"[{request_id}] User message: '{user_message}'")
+            logger.info(f"[{request_id}] User ID: {user_id}")
+            logger.info(f"[{request_id}] LLM Provider: Ollama")
 
             # Extract entities from Rasa NLU
             entities = tracker.latest_message.get("entities", [])
@@ -60,10 +66,10 @@ class ActionGenerateVisualization(Action):
             }
 
             logger.info(
-                f"🔍 [{request_id}] Extracted entities: {json.dumps(extracted_entities, indent=2)}"
+                f"[{request_id}] Extracted entities: {json.dumps(extracted_entities, indent=2)}"
             )
             logger.info(
-                f"📊 [{request_id}] Full tracker message: {json.dumps(tracker.latest_message, indent=2, default=str)}"
+                f"[{request_id}] Full tracker message: {json.dumps(tracker.latest_message, indent=2, default=str)}"
             )
 
             # Optional language override from Rasa (metadata.language or slot 'language').
@@ -80,17 +86,15 @@ class ActionGenerateVisualization(Action):
                     if isinstance(slot_lang, str) and slot_lang.strip():
                         override_language = slot_lang
             except Exception as lang_exc:
-                logger.warning(
-                    f"⚠️  [{request_id}] Language detection error: {lang_exc}"
-                )
+                logger.warning(f"[{request_id}] Language detection error: {lang_exc}")
 
-            logger.info(f"🌐 [{request_id}] Language: {override_language or 'auto'}")
+            logger.info(f"[{request_id}] Language: {override_language or 'auto'}")
 
             # Normalize language
             if isinstance(override_language, str):
                 override_language = override_language.split("-")[0].lower() or None
 
-            logger.info(f"⚙️  [{request_id}] Starting LLM plan generation...")
+            logger.info(f"[{request_id}] Starting LLM plan generation...")
             plan_start = time.time()
 
             # If no override, planner will run in auto language detection mode (pass None)
@@ -100,163 +104,160 @@ class ActionGenerateVisualization(Action):
             )
 
             plan_time = time.time() - plan_start
-            logger.info(f"✅ [{request_id}] LLM plan generated in {plan_time:.2f}s")
-            logger.info(f"📋 [{request_id}] Plan object type: {type(plan_obj)}")
+            logger.info(f"[{request_id}] LLM plan generated in {plan_time:.2f}s")
+            logger.info(f"[{request_id}] Plan object type: {type(plan_obj)}")
 
             # Serialize plan (Pydantic model) to JSON and return as single message
             try:
                 if hasattr(plan_obj, "model_dump_json"):
                     plan_json = plan_obj.model_dump_json(indent=2)  # type: ignore[attr-defined]
-                    logger.info(
-                        f"✅ [{request_id}] Plan serialized using model_dump_json"
-                    )
+                    logger.info(f"[{request_id}] Plan serialized using model_dump_json")
                 else:
                     plan_json = json.dumps(plan_obj, indent=2, default=str)
-                    logger.info(f"✅ [{request_id}] Plan serialized using json.dumps")
+                    logger.info(f"[{request_id}] Plan serialized using json.dumps")
 
                 logger.info(
-                    f"📄 [{request_id}] Plan JSON length: {len(plan_json)} characters"
+                    f"[{request_id}] Plan JSON length: {len(plan_json)} characters"
                 )
-                logger.debug(
-                    f"📄 [{request_id}] Plan JSON preview: {plan_json[:500]}..."
-                )
+                logger.debug(f"[{request_id}] Plan JSON preview: {plan_json[:500]}...")
 
             except Exception as ser_exc:
-                logger.error(f"❌ [{request_id}] Serialization error: {ser_exc}")
+                logger.error(f"[{request_id}] Serialization error: {ser_exc}")
                 plan_json = f"Serialization error: {ser_exc}"
 
-            logger.info(f"📤 [{request_id}] Sending response via dispatcher...")
-            # Convertir le JSON string en objet Python si nécessaire
+            logger.info(f"[{request_id}] Sending response via dispatcher...")
+            # Convert JSON string into Python object if necessary
             try:
                 if isinstance(plan_json, str):
                     chart_data = json.loads(plan_json)
                 else:
                     chart_data = plan_json
-                
-                # Envoyer avec le format custom pour les graphiques
+
+                # Send using the custom format for charts
                 dispatcher.utter_message(
-                    text="Voici votre visualisation :",
-                    custom=self._convert_to_nextjs_format(chart_data)
+                    text="Here is your visualization:",
+                    custom=self._convert_to_nextjs_format(chart_data),
                 )
             except json.JSONDecodeError:
-                # Fallback si problème de parsing JSON
+                # Fallback if JSON parsing fails
                 dispatcher.utter_message(text=plan_json)
-            logger.info(f"✅ [{request_id}] Response sent successfully")
+            logger.info(f"[{request_id}] Response sent successfully")
 
             total_time = time.time() - start_time
-            logger.info(f"🏁 [{request_id}] ACTION COMPLETED in {total_time:.2f}s")
+            logger.info(f"[{request_id}] ACTION COMPLETED in {total_time:.2f}s")
 
         except Exception as e:
             error_msg = f"Error generating visualization: {str(e)}"
-            logger.error(f"💥 [{request_id}] ACTION ERROR: {error_msg}")
-            logger.exception(f"💥 [{request_id}] Full exception details:")
+            logger.error(f"[{request_id}] ACTION ERROR: {error_msg}")
+            logger.exception(f"[{request_id}] Full exception details:")
 
             try:
-                logger.info(f"📤 [{request_id}] Sending error response...")
-                dispatcher.utter_message(text="❌ Error generating visualization.")
+                logger.info(f"[{request_id}] Sending error response...")
+                dispatcher.utter_message(text="Error generating visualization.")
                 dispatcher.utter_message(text=error_msg)
-                logger.info(f"✅ [{request_id}] Error response sent")
+                logger.info(f"[{request_id}] Error response sent")
             except Exception as dispatch_err:
                 logger.error(
-                    f"💥 [{request_id}] Failed to send error response: {dispatch_err}"
+                    f"[{request_id}] Failed to send error response: {dispatch_err}"
                 )
 
-        logger.info(f"🔚 [{request_id}] Returning from action...")
+        logger.info(f"[{request_id}] Returning from action...")
+        return []
+
     def _convert_to_nextjs_format(self, chart_data: dict) -> dict:
-        """Convertit les données au format Next.js"""
-        nextjs_data = {
-            "linePlots": [],
-            "boxPlots": []
-        }
-        
-        if 'charts' in chart_data:
-            for chart in chart_data['charts']:
-                # Extraire les catégories
+        """Convert data to Next.js format"""
+        nextjs_data = {"linePlots": [], "boxPlots": []}
+
+        if "charts" in chart_data:
+            for chart in chart_data["charts"]:
+                # Extract categories
                 categories = self._extract_categories(chart)
-                
-                # Créer les séries
+
+                # Build series
                 series = []
-                for metric in chart.get('metrics', []):
-                    # 🚨 IMPORTANT: Récupérer les vraies données
+                for metric in chart.get("metrics", []):
+                    # IMPORTANT: Retrieve the real metric data
                     values = self._get_actual_metric_values(metric, categories)
-                    series.append({
-                        "label": metric.get('title', f"Série {len(series) + 1}"),
-                        "values": values
-                    })
-                
+                    series.append(
+                        {
+                            "label": metric.get("title", f"Series {len(series) + 1}"),
+                            "values": values,
+                        }
+                    )
+
                 line_plot = {
-                    "chartTitle": chart.get('title', 'Graphique'),
+                    "chartTitle": chart.get("title", "Chart"),
                     "xAxisLabel": self._get_x_axis_label(chart),
                     "yAxisLabel": self._get_y_axis_label(chart),
                     "bins": categories,
-                    "series": series
+                    "series": series,
                 }
                 nextjs_data["linePlots"].append(line_plot)
-        
-        # Nettoyer les listes vides
+
+        # Clean empty lists
         if not nextjs_data["boxPlots"]:
             del nextjs_data["boxPlots"]
-        
+
         return nextjs_data
-    
+
     def _extract_categories(self, chart: dict) -> list:
-        """Extrait les catégories pour l'axe X"""
+        """Extract categories for the X axis"""
         categories = []
-        for metric in chart.get('metrics', []):
-            for group in metric.get('group_by', []):
-                categories.extend(group.get('categories', []))
-        
-        # Supprimer doublons
+        for metric in chart.get("metrics", []):
+            for group in metric.get("group_by", []):
+                categories.extend(group.get("categories", []))
+
+        # Remove duplicates
         unique_categories = []
         for cat in categories:
             if cat not in unique_categories:
                 unique_categories.append(cat)
-        
-        return unique_categories if unique_categories else ['Catégorie 1', 'Catégorie 2']
-    
-    def _get_actual_metric_values(self, metric: dict, categories: list) -> list:
-        """🚨 CRITIQUE: Récupère les vraies données métier"""
-        # TODO: Implémenter selon votre source de données
-        # Exemples d'implémentation :
-        
-        # Option 1: Base de données
-        # return self._query_database(metric, categories)
-        
-        # Option 2: API externe  
-        # return self._fetch_from_api(metric, categories)
-        
-        # Option 3: Fichier de données
-        # return self._load_from_file(metric, categories)
-        
-        # 🚨 TEMPORAIRE: Valeurs de test (REMPLACER PAR VOS DONNÉES)
-        import random
-        return [random.uniform(20, 100) for _ in categories]
-    
-    def _get_x_axis_label(self, chart: dict) -> str:
-        """Génère le label de l'axe X"""
-        first_metric = chart.get('metrics', [{}])[0]
-        first_group = first_metric.get('group_by', [{}])[0]
-        categories = first_group.get('categories', [])
-        
-        if any('MALE' in str(cat) or 'FEMALE' in str(cat) for cat in categories):
-            return 'Sexe'
-        elif any('ISCHEMIC' in str(cat) or 'HEMORRHAGE' in str(cat) for cat in categories):
-            return "Type d'AVC"
-        else:
-            return 'Catégories'
-    
-    def _get_y_axis_label(self, chart: dict) -> str:
-        """Génère le label de l'axe Y"""
-        first_metric = chart.get('metrics', [{}])[0]
-        metric_name = first_metric.get('metric', 'Valeurs')
-        
-        metric_labels = {
-            'DTN': 'Temps DTN (minutes)',
-            'NIHSS': 'Score NIHSS',
-            'AGE': 'Âge (années)',
-            'BP': 'Pression Artérielle (mmHg)'
-        }
-        
-        return metric_labels.get(metric_name, metric_name)
 
-        return []
+        return unique_categories if unique_categories else ["Category 1", "Category 2"]
+
+    def _get_actual_metric_values(self, metric: dict, categories: list) -> list:
+        """CRITICAL: Retrieve real business data"""
+        # TODO: Implement according to your data source
+        # Example implementations:
+        #
+        # Option 1: Database
+        # return self._query_database(metric, categories)
+        #
+        # Option 2: External API
+        # return self._fetch_from_api(metric, categories)
+        #
+        # Option 3: Data file
+        # return self._load_from_file(metric, categories)
+        #
+        # TEMPORARY: Test values (REPLACE WITH YOUR DATA)
+
+        return [random.uniform(20, 100) for _ in categories]
+
+    def _get_x_axis_label(self, chart: dict) -> str:
+        """Generate the X axis label"""
+        first_metric = chart.get("metrics", [{}])[0]
+        first_group = first_metric.get("group_by", [{}])[0]
+        categories = first_group.get("categories", [])
+
+        if any("MALE" in str(cat) or "FEMALE" in str(cat) for cat in categories):
+            return "Sex"
+        elif any(
+            "ISCHEMIC" in str(cat) or "HEMORRHAGE" in str(cat) for cat in categories
+        ):
+            return "Stroke Type"
+        else:
+            return "Categories"
+
+    def _get_y_axis_label(self, chart: dict) -> str:
+        """Generate the Y axis label"""
+        first_metric = chart.get("metrics", [{}])[0]
+        metric_name = first_metric.get("metric", "Values")
+
+        metric_labels = {
+            "DTN": "DTN Time (minutes)",
+            "NIHSS": "NIHSS Score",
+            "AGE": "Age (years)",
+            "BP": "Blood Pressure (mmHg)",
+        }
+
+        return metric_labels.get(metric_name, metric_name)
