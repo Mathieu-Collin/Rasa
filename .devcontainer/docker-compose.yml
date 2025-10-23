@@ -9,6 +9,12 @@ services:
       - "5055:5055"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - devcontainer_rasa-network
+
+networks:
+  devcontainer_rasa-network:
+    driver: bridge
 
 volumes:
   ollama_data:
