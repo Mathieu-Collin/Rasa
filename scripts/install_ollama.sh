@@ -29,6 +29,23 @@ log_warning() {
     echo "⚠️  $1"
 }
 
+# Path to project root (scripts/ is inside the repo root)
+PROJ_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OLLAMA_SAVE_DIR="$PROJ_ROOT/ollama_save"
+
+# Ensure the host folder used by docker-compose (./ollama_save) exists
+ensure_ollama_save() {
+    if [ ! -d "$OLLAMA_SAVE_DIR" ]; then
+        log_info "Création du dossier de persistance Ollama: $OLLAMA_SAVE_DIR"
+        mkdir -p "$OLLAMA_SAVE_DIR"
+        # Try to set owner to the current user so Docker can write; ignore failures
+        chown "$(id -u):$(id -g)" "$OLLAMA_SAVE_DIR" 2>/dev/null || true
+        chmod 750 "$OLLAMA_SAVE_DIR" 2>/dev/null || true
+    else
+        log_info "Dossier de persistance Ollama existant: $OLLAMA_SAVE_DIR"
+    fi
+}
+
 # Vérifier si Ollama est déjà installé
 if command -v ollama >/dev/null 2>&1; then
     log_info "Ollama déjà installé: $(ollama --version)"
@@ -54,6 +71,9 @@ fi
 log_info "Démarrage du service Ollama..."
 
 # Démarrer Ollama en arrière-plan
+# Ensure ollama_save exists (useful when docker-compose bind-mounts ./ollama_save)
+ensure_ollama_save
+
 ollama serve > /tmp/ollama.log 2>&1 &
 OLLAMA_PID=$!
 
