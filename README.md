@@ -17,7 +17,7 @@ This project provides a Rasa custom action server that generates structured data
 ```
 ┌─────────────┐   ┌───────────────┐   ┌─────────────┐
 │ Web Client  │→│ Rasa Server    │→│ Ollama LLM   │
-│ (Port 3000) │   │ (Port 5055)   │   │ (Port 11434)│
+│ (Port 4000) │   │ (Port 6055)   │   │ (Port 11434)│
 └─────────────┘   └───────────────┘   └─────────────┘
          │
          ▼
@@ -67,13 +67,13 @@ python -m rasa_sdk --actions src.actions
 # Ctrl+Shift+P > "Tasks: Run Task" > "Start Rasa Actions"
 ```
 
-The server will be available at `http://localhost:5055`
+The server will be available at `http://localhost:6055`
 
 ## API Usage
 
 ### Main endpoint
 ```
-POST http://localhost:5055/webhook
+POST http://localhost:6055/webhook
 Content-Type: application/json
 ```
 
@@ -185,14 +185,14 @@ This project includes VS Code tasks for easy development:
 
 For multi-container setups (Rasa, Actions, Ollama):
 - Ensure all containers are on the same Docker network
-- Use service names (not IPs) for endpoints (e.g., `http://action:5055/webhook`)
+- Use service names (not IPs) for endpoints (e.g., `http://action:6055/webhook`)
 - See `DOCKER_NETWORK_TROUBLESHOOTING.md` for detailed guidance
 
 ## Troubleshooting
 
 ### Common Issues
 
-- **Connection refused on port 5055**: Make sure the action server is running
+- **Connection refused on port 6055**: Make sure the action server is running
 - **Ollama not accessible**: Check Ollama container/network config
 - **JSON parsing errors**: Ollama may return extra text; the system extracts valid JSON automatically
 - **Timeouts**: Use smaller models or increase request timeouts
@@ -236,4 +236,4 @@ For help:
 ---
 
 **Note:** This project is optimized for Ollama and intentionally avoids cloud dependencies (e.g., OpenAI) for privacy and local control.
-ACTION_ENDPOINT_URL=http://172.18.0.6:5055/webhook
+ACTION_ENDPOINT_URL=http://172.18.0.6:6055/webhook

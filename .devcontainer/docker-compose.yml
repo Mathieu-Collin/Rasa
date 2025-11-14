@@ -6,7 +6,7 @@ services:
     volumes:
       - ..:/workspace:cached
     ports:
-      - "5055:5055"
+      - "6055:6055"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

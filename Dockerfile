@@ -19,7 +19,7 @@ RUN test -f src/shared/SSOT/ChartType.yml \
 			"Did you run 'git submodule update --init --recursive' before 'docker build'?\n" \
 			"Contents of src/shared/SSOT (if any):"; ls -al src/shared/SSOT || true; exit 1)
 
-EXPOSE 5055
+EXPOSE 6055
 
 USER 1001
 

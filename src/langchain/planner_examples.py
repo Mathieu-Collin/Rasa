@@ -1,11 +1,22 @@
 import json
 from typing import Dict, List, Tuple
 
-from src.langchain.planner_schema import AnalysisPlan, ChartSpec, GroupBySex, GroupByStrokeType, MetricSpec, StatisticalTestSpec
+from src.langchain.planner_schema import (
+    AnalysisPlan,
+    ChartSpec,
+    GroupBySex,
+    GroupByStrokeType,
+    MetricSpec,
+    StatisticalTestSpec,
+)
 
 
 def example_dtn_by_sex() -> Tuple[str, str, str]:
-    detected_entities = {"sex": ["MALE", "FEMALE"], "metric": ["DTN"], "chart_type": ["LINE"]}
+    detected_entities = {
+        "sex": ["MALE", "FEMALE"],
+        "metric": ["DTN"],
+        "chart_type": ["LINE"],
+    }
     plan = AnalysisPlan(
         charts=[
             ChartSpec(
@@ -39,7 +50,12 @@ def example_dtn_by_sex() -> Tuple[str, str, str]:
 
 
 def example_dtn_by_sex_and_stroke() -> Tuple[str, str, str]:
-    detected_entities = {"sex": ["MALE", "FEMALE"], "metric": ["DTN"], "chart_type": ["BAR"], "stroke_type": ["ISCHEMIC", "INTRACEREBRAL_HEMORRHAGE"]}
+    detected_entities = {
+        "sex": ["MALE", "FEMALE"],
+        "metric": ["DTN"],
+        "chart_type": ["BAR"],
+        "stroke_type": ["ISCHEMIC", "INTRACEREBRAL_HEMORRHAGE"],
+    }
     plan = AnalysisPlan(
         charts=[
             ChartSpec(
@@ -51,28 +67,40 @@ def example_dtn_by_sex_and_stroke() -> Tuple[str, str, str]:
                         title="DTN for Males (Ischemic)",
                         description="Average DTN for male patients with ischemic stroke",
                         metric="DTN",
-                        group_by=[GroupBySex(categories=["MALE"]), GroupByStrokeType(categories=["ISCHEMIC"])],
+                        group_by=[
+                            GroupBySex(categories=["MALE"]),
+                            GroupByStrokeType(categories=["ISCHEMIC"]),
+                        ],
                         filters=None,
                     ),
                     MetricSpec(
                         title="DTN for Females (Ischemic)",
                         description="Average DTN for female patients with ischemic stroke",
                         metric="DTN",
-                        group_by=[GroupBySex(categories=["FEMALE"]), GroupByStrokeType(categories=["ISCHEMIC"])],
+                        group_by=[
+                            GroupBySex(categories=["FEMALE"]),
+                            GroupByStrokeType(categories=["ISCHEMIC"]),
+                        ],
                         filters=None,
                     ),
                     MetricSpec(
                         title="DTN for Males (ICH)",
                         description="Average DTN for male patients with intracerebral hemorrhage",
                         metric="DTN",
-                        group_by=[GroupBySex(categories=["MALE"]), GroupByStrokeType(categories=["INTRACEREBRAL_HEMORRHAGE"])],
+                        group_by=[
+                            GroupBySex(categories=["MALE"]),
+                            GroupByStrokeType(categories=["INTRACEREBRAL_HEMORRHAGE"]),
+                        ],
                         filters=None,
                     ),
                     MetricSpec(
                         title="DTN for Females (ICH)",
                         description="Average DTN for female patients with intracerebral hemorrhage",
                         metric="DTN",
-                        group_by=[GroupBySex(categories=["FEMALE"]), GroupByStrokeType(categories=["INTRACEREBRAL_HEMORRHAGE"])],
+                        group_by=[
+                            GroupBySex(categories=["FEMALE"]),
+                            GroupByStrokeType(categories=["INTRACEREBRAL_HEMORRHAGE"]),
+                        ],
                         filters=None,
                     ),
                 ],
@@ -87,7 +115,11 @@ def example_dtn_by_sex_and_stroke() -> Tuple[str, str, str]:
 
 
 def example_statistical_test_dtn_by_sex() -> Tuple[str, str, str]:
-    detected_entities = {"sex": ["MALE", "FEMALE"], "metric": ["DTN"], "statistical_test_type": ["T_TEST"]}
+    detected_entities = {
+        "sex": ["MALE", "FEMALE"],
+        "metric": ["DTN"],
+        "statistical_test_type": ["T_TEST"],
+    }
     plan = AnalysisPlan(
         charts=None,
         statistical_tests=[
@@ -120,11 +152,118 @@ def example_statistical_test_dtn_by_sex() -> Tuple[str, str, str]:
     return desc, user, assistant
 
 
+def example_pie_stroke_distribution() -> Tuple[str, str, str]:
+    detected_entities = {
+        "stroke_type": ["ISCHEMIC", "INTRACEREBRAL_HEMORRHAGE"],
+        "chart_type": ["PIE"],
+    }
+    plan = AnalysisPlan(
+        charts=[
+            ChartSpec(
+                title="Stroke Type Distribution",
+                description="Pie chart showing the proportion of each stroke type.",
+                chart_type="PIE",
+                metrics=[
+                    MetricSpec(
+                        title="Ischemic Strokes",
+                        description="Proportion of ischemic strokes",
+                        metric="THROMBOLYSIS",
+                        group_by=[GroupByStrokeType(categories=["ISCHEMIC"])],
+                        filters=None,
+                    ),
+                    MetricSpec(
+                        title="Hemorrhagic Strokes",
+                        description="Proportion of hemorrhagic strokes",
+                        metric="THROMBOLYSIS",
+                        group_by=[
+                            GroupByStrokeType(categories=["INTRACEREBRAL_HEMORRHAGE"])
+                        ],
+                        filters=None,
+                    ),
+                ],
+            )
+        ],
+        statistical_tests=None,
+    )
+    desc = "Pie chart showing stroke type distribution."
+    user = f"USER_UTTERANCE:\nShow me a pie chart of stroke type distribution\n\nENTITIES_DETECTED(JSON):\n{json.dumps(detected_entities)}"
+    assistant = plan.model_dump_json(indent=2)
+    return desc, user, assistant
+
+
+def example_box_age_distribution() -> Tuple[str, str, str]:
+    detected_entities = {
+        "sex": ["MALE", "FEMALE"],
+        "metric": ["AGE"],
+        "chart_type": ["BOX"],
+    }
+    plan = AnalysisPlan(
+        charts=[
+            ChartSpec(
+                title="Age Distribution by Sex",
+                description="Box plot showing age distribution for males and females.",
+                chart_type="BOX",
+                metrics=[
+                    MetricSpec(
+                        title="Age for Males",
+                        description="Age distribution for male patients",
+                        metric="AGE",
+                        group_by=[GroupBySex(categories=["MALE"])],
+                        filters=None,
+                    ),
+                    MetricSpec(
+                        title="Age for Females",
+                        description="Age distribution for female patients",
+                        metric="AGE",
+                        group_by=[GroupBySex(categories=["FEMALE"])],
+                        filters=None,
+                    ),
+                ],
+            )
+        ],
+        statistical_tests=None,
+    )
+    desc = "Box plot of age distribution by sex."
+    user = f"USER_UTTERANCE:\nShow me a box plot of age distribution by sex\n\nENTITIES_DETECTED(JSON):\n{json.dumps(detected_entities)}"
+    assistant = plan.model_dump_json(indent=2)
+    return desc, user, assistant
+
+
+def example_scatter_age_nihss() -> Tuple[str, str, str]:
+    detected_entities = {"metric": ["AGE", "NIHSS"], "chart_type": ["SCATTER"]}
+    plan = AnalysisPlan(
+        charts=[
+            ChartSpec(
+                title="Age vs NIHSS Correlation",
+                description="Scatter plot showing the relationship between patient age and NIHSS score.",
+                chart_type="SCATTER",
+                metrics=[
+                    MetricSpec(
+                        title="Age vs NIHSS",
+                        description="Correlation between age and NIHSS",
+                        metric="AGE",
+                        group_by=None,
+                        filters=None,
+                    ),
+                ],
+            )
+        ],
+        statistical_tests=None,
+    )
+    desc = "Scatter plot of age versus NIHSS score."
+    user = f"USER_UTTERANCE:\nShow me a scatter plot of age versus NIHSS score\n\nENTITIES_DETECTED(JSON):\n{json.dumps(detected_entities)}"
+    assistant = plan.model_dump_json(indent=2)
+    return desc, user, assistant
+
+
 def get_few_shot_examples() -> List[Dict[str, str]]:
     examples: List[Dict[str, str]] = []
     for desc, user, assistant in [
         example_dtn_by_sex(),
         example_dtn_by_sex_and_stroke(),
+        example_pie_stroke_distribution(),
+        example_box_age_distribution(),
+        example_scatter_age_nihss(),
         example_statistical_test_dtn_by_sex(),
     ]:
         examples.append(

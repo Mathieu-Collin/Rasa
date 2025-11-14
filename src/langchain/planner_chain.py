@@ -186,6 +186,83 @@ def get_chains() -> tuple[Any, Any, Any]:
     return cot_chain, plan_chain, full_chain
 
 
+def _detect_chart_type_from_query(query: str) -> str | None:
+    """
+    Detect explicit chart type mentions in user query.
+    Returns the chart type if explicitly mentioned, None otherwise.
+    Supports English and French.
+    """
+    query_lower = query.lower()
+
+    # Chart type patterns (English and French)
+    chart_patterns = {
+        "BAR": [
+            "bar chart",
+            "bar graph",
+            "barchart",
+            "barres",
+            "graphique en barres",
+            "diagramme en barres",
+        ],
+        "LINE": [
+            "line chart",
+            "line graph",
+            "linechart",
+            "courbe",
+            "ligne",
+            "graphique linéaire",
+            "graphe linéaire",
+        ],
+        "PIE": [
+            "pie chart",
+            "pie graph",
+            "camembert",
+            "circulaire",
+            "tarte",
+            "diagramme circulaire",
+        ],
+        "BOX": [
+            "box plot",
+            "boxplot",
+            "box-plot",
+            "boîte à moustaches",
+            "boite a moustaches",
+            "box and whisker",
+        ],
+        "SCATTER": [
+            "scatter plot",
+            "scatterplot",
+            "scatter",
+            "nuage de points",
+            "dispersion",
+        ],
+        "HISTOGRAM": ["histogram", "histogramme", "histogramm", "distribution"],
+        "RADAR": [
+            "radar chart",
+            "spider chart",
+            "radar",
+            "toile d'araignée",
+            "toile",
+            "araignée",
+        ],
+        "AREA": ["area chart", "area graph", "aire", "graphique en aire", "surface"],
+        "WATERFALL": [
+            "waterfall",
+            "cascade",
+            "waterfall chart",
+            "diagramme en cascade",
+        ],
+    }
+
+    # Check for each chart type
+    for chart_type, patterns in chart_patterns.items():
+        for pattern in patterns:
+            if pattern in query_lower:
+                return chart_type
+
+    return None
+
+
 def generate_analysis_plan_simple(question: str, entities: Dict[str, Any]) -> Any:
     """
     Simplified generation for Ollama - parse JSON manually instead of using structured output.
@@ -205,7 +282,31 @@ def generate_analysis_plan_simple(question: str, entities: Dict[str, Any]) -> An
     llm = get_llm()
 
     # Simple prompt for JSON generation
-    prompt_text = f"""You are a planner. Produce ONLY a valid AnalysisPlan JSON according to the schema.
+    prompt_text = f"""You are a clinical analytics planner. Produce ONLY a valid AnalysisPlan JSON according to the schema.
+
+CRITICAL: CHART TYPE SELECTION - READ THE USER REQUEST CAREFULLY!
+
+When the user explicitly mentions a chart type (e.g., "bar chart", "pie chart", "line graph", etc.), 
+YOU MUST use that exact chart type in the JSON output.
+
+Chart type keywords to detect:
+- "bar chart", "bar graph", "barres" → use "BAR"
+- "line chart", "line graph", "courbe", "ligne" → use "LINE"  
+- "pie chart", "camembert", "circular" → use "PIE"
+- "box plot", "boîte à moustaches", "box-and-whisker" → use "BOX"
+- "scatter plot", "nuage de points", "scatter" → use "SCATTER"
+- "histogram", "histogramme", "distribution" → use "HISTOGRAM"
+- "radar chart", "spider chart", "radar" → use "RADAR"
+- "area chart", "aire", "area" → use "AREA"
+
+RULES FOR AUTOMATIC SELECTION (when user doesn't specify):
+- Use LINE or AREA for trends over time or continuous data
+- Use BAR for categorical comparisons between groups
+- Use PIE for showing proportions/percentages of a whole
+- Use BOX for showing data distribution and outliers
+- Use HISTOGRAM for frequency distributions
+- Use SCATTER for showing correlation between two variables
+- Use RADAR for multi-dimensional comparisons
 
 SCHEMA:
 {SCHEMA_DESCRIPTION}
@@ -219,10 +320,14 @@ USER_UTTERANCE:
 ENTITIES_DETECTED(JSON):
 {entities_json}
 
-Generate a valid JSON response for AnalysisPlan. Return ONLY the JSON object, no additional text."""
+IMPORTANT: Analyze the USER_UTTERANCE above for chart type keywords. If the user says "show me a [TYPE] chart", 
+use that TYPE in your chart_type field. Generate a valid JSON response for AnalysisPlan. Return ONLY the JSON object, no additional text."""
 
     try:
         # Get response from LLM
+        logger.info(
+            f"[LLM_REQUEST] Sending prompt to LLM (length: {len(prompt_text)} chars)"
+        )
         response = llm.invoke(prompt_text)
 
         # Extract text content
@@ -231,18 +336,62 @@ Generate a valid JSON response for AnalysisPlan. Return ONLY the JSON object, no
         else:
             json_text = str(response).strip()
 
-        logger.info(f"Raw LLM response: {json_text[:200]}...")
+        logger.info(
+            f"[LLM_RESPONSE] Received response (length: {len(json_text)} chars)"
+        )
+        logger.info(f"[LLM_RESPONSE] First 300 chars: {json_text[:300]}...")
+
+        # Show full response if it's short (likely an error or incomplete)
+        if len(json_text) < 500:
+            logger.warning(
+                f"[LLM_RESPONSE] Response is suspiciously short! Full response:\n{json_text}"
+            )
 
         # Find JSON in response (handle cases where LLM adds extra text)
         start_idx = json_text.find("{")
         end_idx = json_text.rfind("}")
 
+        logger.info(f"[JSON_PARSE] JSON boundaries: start={start_idx}, end={end_idx}")
+
         if start_idx != -1 and end_idx != -1:
             json_only = json_text[start_idx : end_idx + 1]
+            logger.info(f"[JSON_PARSE] Extracted JSON (length: {len(json_only)} chars)")
 
             # Parse JSON
             parsed_json = json.loads(json_only)
-            logger.info("Parsed JSON successfully")
+            logger.info("[JSON_PARSE] Parsed JSON successfully")
+
+            # FALLBACK: Override chart_type if user explicitly mentioned one in the query
+            # This ensures the user's explicit request is honored even if LLM doesn't follow instructions
+            detected_chart_type = _detect_chart_type_from_query(question)
+            logger.info(
+                f"[CHART_TYPE_DETECT] Detected type from query: {detected_chart_type}"
+            )
+
+            if (
+                detected_chart_type
+                and "charts" in parsed_json
+                and parsed_json["charts"]
+            ):
+                for chart in parsed_json["charts"]:
+                    original_type = chart.get("chart_type", "UNKNOWN")
+                    chart["chart_type"] = detected_chart_type
+                    if original_type != detected_chart_type:
+                        logger.warning(
+                            f"[CHART_TYPE_OVERRIDE] User requested '{detected_chart_type}' but LLM generated '{original_type}'. "
+                            f"Overriding to user's explicit request."
+                        )
+
+            # Log chart types generated by LLM
+            if "charts" in parsed_json and parsed_json["charts"]:
+                for idx, chart in enumerate(parsed_json["charts"]):
+                    chart_type = chart.get("chart_type", "UNKNOWN")
+                    chart_title = chart.get("title", "N/A")
+                    logger.info(
+                        f"[LLM_OUTPUT] Chart {idx + 1}: type='{chart_type}', title='{chart_title}'"
+                    )
+            else:
+                logger.warning("[LLM_OUTPUT] No charts found in LLM response")
 
             # Return raw JSON directly - skip Pydantic validation for Ollama compatibility
             logger.info("Returning raw JSON (skipping Pydantic validation for Ollama)")
@@ -254,13 +403,23 @@ Generate a valid JSON response for AnalysisPlan. Return ONLY the JSON object, no
 
     except Exception as e:
         logger.error(f"Error in generate_analysis_plan_simple: {e}")
+        logger.exception("Full traceback:")
+
+        # Detect chart type from user query even in fallback
+        detected_chart_type = _detect_chart_type_from_query(question)
+        fallback_chart_type = detected_chart_type if detected_chart_type else "BAR"
+
+        logger.warning(
+            f"[FALLBACK] Using fallback plan with chart type: {fallback_chart_type}"
+        )
+
         # Return a fallback simple plan
         fallback = {
             "charts": [
                 {
                     "title": "Simple Chart",
                     "description": f"Chart for: {question}",
-                    "chart_type": "BAR",
+                    "chart_type": fallback_chart_type,
                     "metrics": [
                         {
                             "title": "Simple Metric",
