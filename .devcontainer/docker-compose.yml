@@ -10,7 +10,7 @@ services:
       - redis
       - ollama
     ports:
-      - "5005:5005"
+      - "6005:6005"
     env_file:
       - .env
     extra_hosts:
@@ -37,7 +37,10 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - devcontainer_ollama-data:/root/.ollama
+      # Use COMPOSE_PROJECT_DIR which is set by docker compose to the
+      # directory containing the compose file. This avoids needing an
+      # external PROJ_ROOT environment variable.
+      - ./ollama_save:/root/.ollama
     networks:
       - rasa-network
     restart: unless-stopped
@@ -59,7 +62,8 @@ networks:
   rasa-network:
     name: devcontainer_rasa-network
     driver: bridge
-
-volumes:
-  devcontainer_ollama-data:
-    external: true
+## Persist Ollama data in a bind-mounted folder at the project root.
+## The folder will be ${COMPOSE_PROJECT_DIR}/ollama_save when using docker compose.
+## If you prefer a Docker named volume, replace the bind-mount above with a
+## named volume and declare it here (without external: true) so Docker will
+## create it automatically.

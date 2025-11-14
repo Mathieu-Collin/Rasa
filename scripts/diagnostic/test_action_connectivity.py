@@ -61,11 +61,11 @@ def main():
 
     # Liste des endpoints à tester
     endpoints = [
-        ("http://172.18.0.6:5055/webhook", "IP fixe actuelle"),
-        ("http://host.docker.internal:5055/webhook", "host.docker.internal"),
-        ("http://localhost:5055/webhook", "localhost"),
-        ("http://action_devcontainer-action-1:5055/webhook", "nom de container"),
-        ("http://action:5055/webhook", "nom simplifié"),
+        ("http://172.18.0.6:6055/webhook", "IP fixe actuelle"),
+        ("http://host.docker.internal:6055/webhook", "host.docker.internal"),
+        ("http://localhost:6055/webhook", "localhost"),
+        ("http://action_devcontainer-action-1:6055/webhook", "nom de container"),
+        ("http://action:6055/webhook", "nom simplifié"),
     ]
 
     results = {}

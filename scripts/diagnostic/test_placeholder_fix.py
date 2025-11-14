@@ -12,7 +12,7 @@ import requests
 def test_placeholder_fix():
     """Teste que le problème des placeholders est résolu"""
 
-    base_url = "http://localhost:5005"
+    base_url = "http://localhost:6005"
     test_cases = [
         # Cas problématique original
         {
@@ -157,7 +157,7 @@ def test_placeholder_fix():
 def check_rasa_server():
     """Vérifie que le serveur RASA est en marche"""
     try:
-        response = requests.get("http://localhost:5005/", timeout=5)
+        response = requests.get("http://localhost:6005/", timeout=5)
         return response.status_code == 200
     except:
         return False
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     print("🔍 Vérification du serveur RASA...")
 
     if not check_rasa_server():
-        print("❌ Serveur RASA non accessible sur http://localhost:5005")
+        print("❌ Serveur RASA non accessible sur http://localhost:6005")
         print(
             "   Démarrez le serveur avec: Ctrl+Shift+P > Tasks: Run Task > Rasa: Run (latest)"
         )

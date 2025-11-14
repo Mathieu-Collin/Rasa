@@ -319,7 +319,7 @@ rasa run --enable-api --cors '*' --model models --endpoints src/core/endpoints.y
 
 ```bash
 # Test NLU pipeline directly
-curl -X POST http://localhost:5005/model/parse \
+curl -X POST http://localhost:6005/model/parse \
   -H "Content-Type: application/json" \
   -d '{"text": "Bonjour"}'
 ```
@@ -328,7 +328,7 @@ curl -X POST http://localhost:5005/model/parse \
 
 ```bash
 # Test complete webhook flow
-curl -X POST http://localhost:5005/webhooks/rest/webhook \
+curl -X POST http://localhost:6005/webhooks/rest/webhook \
   -H "Content-Type: application/json" \
   -d '{"sender": "user", "message": "Bonjour"}'
 ```
@@ -364,11 +364,11 @@ rasa run --enable-api --cors '*' --model models
 4. **Test Multilingual Support**
 ```bash
 # English (fast path)
-curl -X POST http://localhost:5005/webhooks/rest/webhook \
+curl -X POST http://localhost:6005/webhooks/rest/webhook \
   -d '{"sender": "user", "message": "Hello"}'
 
 # French (hybrid path)  
-curl -X POST http://localhost:5005/webhooks/rest/webhook \
+curl -X POST http://localhost:6005/webhooks/rest/webhook \
   -d '{"sender": "user", "message": "Bonjour"}'
 ```
 
@@ -579,12 +579,12 @@ rasa run --enable-api --cors '*' --model models --endpoints src/core/endpoints.y
 
 ```bash
 # Test API endpoint
-curl -X POST http://localhost:5005/model/parse \
+curl -X POST http://localhost:6005/model/parse \
   -H "Content-Type: application/json" \
   -d '{"text": "Bonjour"}'
 
 # Test webhook
-curl -X POST http://localhost:5005/webhooks/rest/webhook \
+curl -X POST http://localhost:6005/webhooks/rest/webhook \
   -H "Content-Type: application/json" \
   -d '{"sender": "test-user", "message": "Hello"}'
 ```
@@ -733,7 +733,7 @@ After changing the model, validate your configuration:
 curl http://ollama:11434/api/tags | grep "your-new-model"
 
 # Test the configuration
-curl -X POST http://localhost:5005/model/parse \
+curl -X POST http://localhost:6005/model/parse \
   -H "Content-Type: application/json" \
   -d '{"text": "Hello"}'
 
@@ -853,7 +853,7 @@ curl http://ollama-gpu:11434/api/tags
 
 ### Common Issues
 
-#### "Address already in use" (Port 5005)
+#### "Address already in use" (Port 6005)
 ```bash
 # Identify existing process
 ps aux | grep rasa
@@ -897,12 +897,12 @@ python -m pytest tests/integration/ -v
 ### Manual Testing
 ```bash
 # Test specific cases
-curl -X POST http://localhost:5005/model/parse \
+curl -X POST http://localhost:6005/model/parse \
   -H "Content-Type: application/json" \
   -d '{"text": "Bonjour"}'
 
 # Test multilingual support
-curl -X POST http://localhost:5005/model/parse \
+curl -X POST http://localhost:6005/model/parse \
   -H "Content-Type: application/json" \
   -d '{"text": "Hola"}'
 ```

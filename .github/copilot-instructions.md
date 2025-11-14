@@ -228,7 +228,7 @@ hybrid_decision:
 ### 🔍 TÂCHES EN COURS
 
 #### 🚧 Investigation Actions Server (EN COURS)
-- **Problème**: Erreur connexion `action_generate_visualization` sur port 5055
+- **Problème**: Erreur connexion `action_generate_visualization` sur port 6055
 - **Status**: Investigation du serveur d'actions existant nécessaire
 - **Prochaine étape**: Analyse du contenu du serveur d'actions externe
 
@@ -584,12 +584,12 @@ rasa run --enable-api --cors '*' --model models --endpoints src/core/endpoints.y
 
 ```bash
 # Test API REST
-curl -X POST http://localhost:5005/model/parse \
+curl -X POST http://localhost:6005/model/parse \
   -H "Content-Type: application/json" \
   -d '{"text": "Bonjour"}'
 
 # Test Webhook complet
-curl -X POST http://localhost:5005/webhooks/rest/webhook \
+curl -X POST http://localhost:6005/webhooks/rest/webhook \
   -H "Content-Type: application/json" \
   -d '{"sender": "test-user", "message": "Salut"}'
 ```
@@ -627,7 +627,7 @@ curl http://ollama-gpu:11434/api/tags
 
 ### 🚨 Résolution de Problèmes Courants
 
-#### "Address already in use" (Port 5005)
+#### "Address already in use" (Port 6005)
 
 ```bash
 # Identifier processus existant

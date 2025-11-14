@@ -1,5 +1,5 @@
 action_endpoint:
-  url: "http://localhost:5055/webhook"
+  url: "http://localhost:6055/webhook"
 
 lock_store:
   type: "in_memory"

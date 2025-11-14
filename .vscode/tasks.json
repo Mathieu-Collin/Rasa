@@ -56,7 +56,7 @@
         {
             "label": "Rasa: Shell (latest)",
             "type": "shell",
-            "command": "rasa shell --model models --endpoints src/core/endpoints.yml",
+            "command": "rasa shell --model models --port 6005 --endpoints src/core/endpoints.yml",
             "group": "test",
             "options": {
                 "cwd": "${workspaceFolder}",
@@ -69,7 +69,7 @@
         {
             "label": "Rasa: Run (latest)",
             "type": "shell",
-            "command": "rasa run --enable-api --cors '*' --model models --endpoints src/core/endpoints.yml",
+            "command": "rasa run --enable-api --cors '*' --port 6005 --model models --endpoints src/core/endpoints.yml",
             "group": "test",
             "options": {
                 "cwd": "${workspaceFolder}",

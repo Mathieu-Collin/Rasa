@@ -1,5 +1,5 @@
 action_endpoint:
-  url: "http://action_devcontainer-action-1:5055/webhook"
+  url: "http://action_devcontainer-action-1:6055/webhook"
 lock_store:
   type: redis
   url: ${LOCK_STORE_URL}

@@ -12,7 +12,7 @@ import requests
 def test_fallback_cases():
     """Teste différents cas de fallback"""
 
-    base_url = "http://localhost:5005"
+    base_url = "http://localhost:6005"
     test_cases = [
         # Cas 1: Demande de chanson (doit déclencher fallback par mots-clés)
         {
@@ -56,9 +56,7 @@ def test_fallback_cases():
 
         try:
             # Test de l'API parse
-            parse_response = requests.post(
-                f"{base_url}/model/parse", json={"text": test_case["text"]}, timeout=30
-            )
+            parse_response = requests.post(f"{base_url}/model/parse", json={"text": test_case["text"]}, timeout=30)
 
             if parse_response.status_code == 200:
                 parse_data = parse_response.json()
@@ -137,9 +135,7 @@ def test_fallback_cases():
         print("\n❌ ÉCHECS:")
         for result in results:
             if not result["success"]:
-                print(
-                    f"   - {result['test']}: attendu '{result['expected']}', obtenu '{result['detected']}'"
-                )
+                print(f"   - {result['test']}: attendu '{result['expected']}', obtenu '{result['detected']}'")
 
     return results
 
@@ -147,7 +143,7 @@ def test_fallback_cases():
 def check_rasa_server():
     """Vérifie que le serveur RASA est en marche"""
     try:
-        response = requests.get("http://localhost:5005/", timeout=5)
+        response = requests.get("http://localhost:6005/", timeout=5)
         return response.status_code == 200
     except:
         return False
@@ -157,10 +153,8 @@ if __name__ == "__main__":
     print("🔍 Vérification du serveur RASA...")
 
     if not check_rasa_server():
-        print("❌ Serveur RASA non accessible sur http://localhost:5005")
-        print(
-            "   Démarrez d'abord le serveur avec: Ctrl+Shift+P > Tasks: Run Task > Rasa: Run (latest)"
-        )
+        print("❌ Serveur RASA non accessible sur http://localhost:6005")
+        print("   Démarrez d'abord le serveur avec: Ctrl+Shift+P > Tasks: Run Task > Rasa: Run (latest)")
         exit(1)
 
     print("✅ Serveur RASA accessible")
@@ -176,10 +170,7 @@ if __name__ == "__main__":
                 "summary": {
                     "total": len(results),
                     "successes": sum(1 for r in results if r["success"]),
-                    "success_rate": (
-                        sum(1 for r in results if r["success"]) / len(results)
-                    )
-                    * 100,
+                    "success_rate": (sum(1 for r in results if r["success"]) / len(results)) * 100,
                 },
             },
             f,
