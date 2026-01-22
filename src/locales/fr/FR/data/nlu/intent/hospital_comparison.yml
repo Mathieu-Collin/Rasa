@@ -1,0 +1,37 @@
+version: "3.1"
+
+nlu:
+  - intent: compare_hospitals
+    examples: |
+      - Comparer deux hôpitaux
+      - Compare les hôpitaux
+      - Je veux comparer deux hôpitaux
+      - Peux-tu comparer les hôpitaux
+      - Comparaison d'hôpitaux
+      - Comparaison statistique des hôpitaux
+      - Compare la performance des hôpitaux
+      - Montre-moi une comparaison entre deux hôpitaux
+      - Analyse les différences entre les hôpitaux
+      - Analyse statistique des hôpitaux
+      - Compare les temps door to needle entre hôpitaux
+      - Test statistique pour deux hôpitaux
+      - Lance une comparaison d'hôpitaux
+      - Effectue une analyse de comparaison d'hôpitaux
+      - Montre les statistiques de comparaison d'hôpitaux
+      - Compare l'hôpital A et l'hôpital B
+      - Y a-t-il une différence entre les deux hôpitaux
+      - Les hôpitaux sont-ils différents
+      - Teste si les hôpitaux sont statistiquement différents
+      - Test de Shapiro Wilk pour les hôpitaux
+      - t-test pour les hôpitaux
+      - Test de Wilcoxon pour les hôpitaux
+      - Compare les temps door-to-needle
+      - Comparaison DTN des hôpitaux
+      - Différence statistique entre hôpitaux
+      - Analyse les données hospitalières
+      - Compare les métriques hospitalières
+      - Comparaison de performance hospitalière
+      - Montre-moi les statistiques hospitalières
+      - Comparaison des établissements
+      - Analyse comparative des établissements hospitaliers
+      - Différence entre deux établissements

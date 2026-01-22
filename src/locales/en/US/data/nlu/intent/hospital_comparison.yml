@@ -1,0 +1,34 @@
+version: "3.1"
+
+nlu:
+  - intent: compare_hospitals
+    examples: |
+      - Compare two hospitals
+      - Compare hospitals
+      - I want to compare two hospitals
+      - Can you compare hospitals for me
+      - Hospital comparison
+      - Statistical comparison of hospitals
+      - Compare hospital performance
+      - Show me a comparison between two hospitals
+      - Analyze differences between hospitals
+      - Hospital statistical analysis
+      - Compare door to needle times between hospitals
+      - Statistical test for two hospitals
+      - Run a hospital comparison
+      - Perform hospital comparison analysis
+      - Show hospital comparison statistics
+      - Compare hospital A and hospital B
+      - Is there a difference between the two hospitals
+      - Are the hospitals different
+      - Test if hospitals are statistically different
+      - Shapiro Wilk test for hospitals
+      - t-test for hospitals
+      - Wilcoxon test for hospitals
+      - Compare door-to-needle times
+      - Hospital DTN comparison
+      - Statistical difference between hospitals
+      - Analyze hospital data
+      - Compare hospital metrics
+      - Hospital performance comparison
+      - Show me hospital statistics

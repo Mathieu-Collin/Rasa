@@ -1,0 +1,8 @@
+version: "3.1"
+
+responses:
+  utter_hospital_comparison_started:
+    - text: "🏥 Starting hospital comparison analysis..."
+  
+  utter_hospital_comparison_complete:
+    - text: "✅ Hospital comparison analysis is complete."
