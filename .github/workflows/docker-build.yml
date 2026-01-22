@@ -164,3 +164,50 @@ jobs:
             -t ghcr.io/$REPO_NAME_LC:${SAFE_TAG}-latest \
             -t ghcr.io/$REPO_NAME_LC:${SAFE_TAG}-${{ github.sha }} \
             $DOCKER_OUTPUT_FLAG .
+name: Build Action Docker Image
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code (with submodules)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lowercase repository name
+        run: |
+          REPO_NAME=${{ github.repository }}
+          echo "REPO_NAME_LC=${REPO_NAME,,}" >> ${GITHUB_ENV}
+
+      - name: Verify SSOT YAML presence
+        run: |
+          echo "Listing SSOT directory contents:";
+          ls -al src/shared/SSOT || true
+          test -f src/shared/SSOT/ChartType.yml || (echo "ERROR: SSOT YAML files missing. Did the submodule fetch?" >&2; exit 1)
+          wc -l src/shared/SSOT/*.yml || true
+
+      - name: Build Docker image (fail-fast if SSOT missing)
+        run: |
+          docker build --progress=plain -t ghcr.io/$REPO_NAME_LC:latest .
+
+      - name: Push Docker image to GitHub Container Registry
+        run: |
+          docker push ghcr.io/$REPO_NAME_LC:latest

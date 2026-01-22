@@ -1,0 +1,57 @@
+import os
+from typing import Tuple, overload
+
+from dotenv import load_dotenv
+
+_loaded = False
+
+
+@overload
+def require_all_env(key: str) -> str: ...
+@overload
+def require_all_env(*keys: str) -> Tuple[str, ...]: ...
+
+
+def require_all_env(*keys: str) -> str | Tuple[str, ...]:  # type: ignore
+    global _loaded
+    if not _loaded:
+        load_dotenv(override=True)
+        _loaded = True
+
+    values: list[str] = []
+    missing: list[str] = []
+
+    for key in keys:
+        val = os.getenv(key)
+        if val is None:
+            missing.append(key)
+        else:
+            values.append(val)
+
+    if missing:
+        raise OSError(f"Missing required environment variable(s): {', '.join(missing)}")
+
+    return tuple(values) if len(values) > 1 else values[0]
+
+
+@overload
+def require_any_env(key: str) -> str | None: ...
+@overload
+def require_any_env(*keys: str) -> Tuple[str | None, ...]: ...
+
+
+def require_any_env(*keys: str) -> str | None | Tuple[str | None, ...]:  # type: ignore
+    global _loaded
+    if not _loaded:
+        load_dotenv(override=True)
+        _loaded = True
+
+    values: list[str | None] = []
+    for key in keys:
+        val = os.getenv(key)
+        values.append(val)
+
+    if all(v is None for v in values):
+        raise OSError(f"At least one of the required environment variables must be set: {', '.join(keys)}")
+
+    return tuple(values) if len(values) > 1 else values[0]
